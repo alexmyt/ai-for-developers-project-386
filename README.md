@@ -22,7 +22,34 @@
 
 ## Стек
 
-- Разное
+Монорепо на pnpm workspaces:
+
+| Пакет | Что внутри |
+| --- | --- |
+| `apps/api` | NestJS 12, состояние в памяти, раздача статики |
+| `apps/web` | React 19 + Vite 8, SPA для гостя и владельца |
+| `packages/contract` | TypeSpec 1.17, из него генерируется `openapi.json` (OpenAPI 3.0) |
+| `packages/sdk` | клиент для фронтенда, сгенерированный из `openapi.json` |
+
+- **Контракт** — TypeSpec как источник истины. `openapi.json` коммитится,
+  CI проверяет, что он не устарел. Серверного генератора для NestJS нет,
+  поэтому бэкенд написан по контракту и проверяется контрактными
+  e2e-тестами (supertest + валидация ответов по JSON-схеме через ajv).
+- **Фронтенд** — React 19, Vite, `react-router`, TanStack Query, Tailwind CSS
+  + shadcn/ui, React Hook Form + Zod, `date-fns`.
+- **Бэкенд** — NestJS 12, Express, `async-mutex` для защиты от двойного
+  бронирования, Vitest для тестов.
+- **Доставка** — один multi-stage Docker-образ (`node:22-alpine`), NestJS
+  отдаёт и API, и собранную статику; API под `/api`, порт 3000,
+  HEALTHCHECK на `/api/health`.
+
+Авторизации нет по условиям сценария: владельческие эндпоинты
+(`POST /api/meeting-types`, `GET /api/bookings`) открыты, а состояние
+хранится в памяти одного процесса и теряется при перезапуске.
+
+Решения и их обоснование — в [ADR](docs/adr/): [стек](docs/adr/0001-stack.md),
+[contract-first API](docs/adr/0002-contract-first-api.md),
+[состояние в памяти и блокировки](docs/adr/0003-in-memory-state-and-slot-locking.md).
 
 ## Установка
 
