@@ -1,0 +1,14 @@
+{
+  "name": "@repo/contract",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsp compile .",
+    "check": "pnpm build && git diff --exit-code -- openapi.json"
+  },
+  "devDependencies": {
+    "@typespec/compiler": "1.17.0",
+    "@typespec/http": "1.17.0",
+    "@typespec/openapi3": "1.17.0"
+  }
+}

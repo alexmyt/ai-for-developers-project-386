@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+packages/contract/openapi.json
+packages/sdk/src
+.agents
+README.md
+AGENTS.md
+docs
