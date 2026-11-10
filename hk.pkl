@@ -1,0 +1,34 @@
+amends "package://github.com/jdx/hk/releases/download/v2.11.1/hk@2.11.1#/Config.pkl"
+import "package://github.com/jdx/hk/releases/download/v2.11.1/hk@2.11.1#/Builtins.pkl"
+// Using a coding agent? See https://hk.jdx.dev/agents
+
+// Те же исключения, что в .prettierignore и eslint.config.js: вендоренные
+// скиллы агентов, документация и сгенерированный код не линтуются.
+exclude = List(
+  ".agents/**",
+  "docs/**",
+  "README.md",
+  "AGENTS.md",
+  "pnpm-lock.yaml",
+  "packages/sdk/src/**",
+  "packages/contract/openapi.json",
+)
+
+local linters = new Mapping {
+  ["eslint"] = Builtins.eslint
+  ["prettier"] = Builtins.prettier
+  ["tsc"] = (Builtins.tsc) {
+    profiles = List("types")
+  }
+}
+
+steps = linters
+
+// AGENTS.md требует Conventional Commits.
+hooks {
+  ["commit-msg"] {
+    steps {
+      ["conventional-commit"] = Builtins.check_conventional_commit
+    }
+  }
+}
