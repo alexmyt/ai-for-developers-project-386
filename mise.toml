@@ -1,0 +1,5 @@
+min_version = "2026.11.3"
+
+[tools]
+node = "22"
+pnpm = "12"
