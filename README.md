@@ -76,16 +76,17 @@ echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
 ```bash
 git clone https://github.com/alexmyt/ai-for-developers-project-386.git
 cd ai-for-developers-project-386
-mise install
-pnpm install
+mise run setup
 ```
 
+`mise run setup` ставит инструменты из `mise.toml`, зависимости и git-хуки.
 Проверить, что инструменты подхватились, можно командой `mise doctor`.
 
 ## Использование
 
 ```bash
 pnpm dev          # API на :3000 и Vite на :5173, /api проксируется в API
+pnpm check        # все проверки: формат, линтер, типы, тесты, сборка, контракт
 pnpm test         # Vitest: контрактные и юнит-тесты
 pnpm lint         # ESLint
 pnpm typecheck    # tsc --noEmit во всех пакетах

@@ -2,27 +2,41 @@
 
 Учебный проект Хекслета: сервис для бронирования календаря.
 
-## Commits
+## Команды
 
-Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): subject`.
+```bash
+mise run setup   # первый запуск: инструменты, зависимости, git-хуки
+pnpm dev         # API на :3000 и Vite на :5173
+pnpm check       # все проверки: формат, линтер, типы, тесты, сборка, контракт
+pnpm test        # только тесты (Vitest)
+pnpm lint        # только ESLint
+```
 
-- **Types**: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`.
-- **Scope**: the area touched — `(docs/agents)`, `(workflow)` — omitted for repo-wide changes.
-- **Subject**: imperative mood, lowercase, no trailing period; what changed, not why.
-- **Body**: the why, wrapped at 72 columns; a `BREAKING CHANGE:` footer for incompatible changes, with `!` after the type or scope.
+Точечно: `pnpm format`, `pnpm format:check`, `pnpm typecheck`, `pnpm build`.
 
-This rule supersedes the plain-sentence style of the existing history.
+## Устройство
 
-## Agent skills
+- `apps/api` — бэкенд на NestJS, состояние в памяти, отдаёт `/api` и статику.
+- `apps/web` — фронтенд на React + Vite, SPA гостя и владельца.
+- `packages/contract` — TypeSpec, источник истины; из него генерируется `openapi.json`.
+- `packages/sdk` — клиент для фронтенда, сгенерированный из `openapi.json`.
 
-### Issue tracker
+Монорепо на pnpm workspaces, контракт-first: сначала TypeSpec, потом API и SDK.
+Решения — в `docs/adr/`, правила календаря — в `docs/spec/`, термины — в `GLOSSARY.md`.
 
-Issues and specs live as GitHub issues in `alexmyt/ai-for-developers-project-386`, managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+## Коммиты
 
-### Triage labels
+Сообщения следуют [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): subject`.
 
-Five canonical triage roles, default label strings (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+- **Типы**: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`.
+- **Scope**: затронутая область — `(docs/agents)`, `(workflow)`; для изменений по всему репозиторию опускается.
+- **Subject**: повелительное наклонение, строчная буква, без точки; что изменилось, а не почему.
+- **Body**: почему, строки до 72 символов; футер `BREAKING CHANGE:` для несовместимых изменений и `!` после типа или scope.
 
-### Domain docs
+Формат проверяет хук `commit-msg`, который ставит `mise run setup`.
 
-Single-context: `GLOSSARY.md`, `docs/adr/` and `docs/spec/` at the repo root. See `docs/agents/domain.md`.
+## Для агентов
+
+- Задачи и спецификации — в GitHub issues через `gh`: `docs/agents/issue-tracker.md`.
+- Метки триажа: `docs/agents/triage-labels.md`.
+- Доменные документы: `docs/agents/domain.md`.
