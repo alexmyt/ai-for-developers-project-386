@@ -145,6 +145,12 @@ export function AdminPage() {
         >
           На главную
         </Link>
+        <Link
+          to="/admin/bookings"
+          className="text-center font-medium text-slate-900 underline hover:no-underline"
+        >
+          Предстоящие события
+        </Link>
       </form>
     </main>
   )
