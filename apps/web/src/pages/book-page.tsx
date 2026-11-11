@@ -3,8 +3,8 @@ import { Link, useSearchParams } from 'react-router'
 import { createBooking, getAvailability, listMeetingTypes } from '@repo/sdk'
 import type { Availability, AvailabilityDay, AvailabilitySlot, MeetingType } from '@repo/sdk'
 
-// Страница записи: календарь на 14 дней, слоты выбранного дня и форма
-// брони через сгенерированный SDK (спецификация §7, §8, §11; ADR-0002).
+// Страница записи: календарь на 14 дней и двухшаговый выбор — свободный
+// слот, затем по «Продолжить» форма имени и email (спецификация §7, §8, §11).
 type LoadState = 'loading' | 'error' | 'success'
 
 // Время показываем по Москве — пояс владельца (спецификация §3).
@@ -45,8 +45,8 @@ export function BookPage() {
   const [meetingType, setMeetingType] = useState<MeetingType | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
-  // Выбранный свободный слот и шаг экрана: выбор слота открывает форму
-  // имени и email (спецификация §11).
+  // Выбранный свободный слот и шаг экрана: клик по слоту активирует
+  // «Продолжить», форма имени и email открывается этой кнопкой (§11).
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null)
   const [formOpen, setFormOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -95,12 +95,16 @@ export function BookPage() {
     }
   }, [meetingTypeId])
 
-  /** Выбор свободного слота открывает форму брони. */
+  /** Выбор свободного слота активирует «Продолжить» (спецификация §11). */
   function selectSlot(slot: AvailabilitySlot): void {
     setSelectedSlot(slot)
-    setFormOpen(true)
     setSubmitError(null)
     setBookedSlot(null)
+  }
+
+  /** «Продолжить» открывает форму имени и email для выбранного слота. */
+  function openGuestForm(): void {
+    setFormOpen(true)
   }
 
   /** Забронированный слот становится занятым в календаре (спецификация §11). */
@@ -177,6 +181,8 @@ export function BookPage() {
       markSlotTaken(data.start)
       setBookedSlot(selectedSlot)
       setFormOpen(false)
+      // Слот занят: до нового выбора «Продолжить» неактивна (§11).
+      setSelectedSlot(null)
     } catch {
       setSubmitError('Не удалось отправить бронь. Попробуйте ещё раз.')
     } finally {
@@ -265,8 +271,8 @@ export function BookPage() {
             <ul className="flex flex-col gap-2">
               {selectedDay?.slots.map((slot) =>
                 slot.status === 'free' ? (
-                  // Свободный слот выбирается кликом целиком: открывается
-                  // форма брони.
+                  // Свободный слот выбирается кликом: выбор активирует
+                  // «Продолжить» ниже (спецификация §11).
                   <li key={slot.start}>
                     <button
                       type="button"
@@ -295,6 +301,21 @@ export function BookPage() {
                 ),
               )}
             </ul>
+
+            {/* «Продолжить»: активна, только когда выбран свободный слот.
+                У типа без свободных слотов в окне выбрать нечего, и кнопка
+                неактивна (спецификация §11). Пока открыта форма, кнопка
+                скрыта — её заменяет «Изменить». */}
+            {!formOpen && (
+              <button
+                type="button"
+                disabled={!selectedSlot}
+                onClick={openGuestForm}
+                className="mt-3 rounded-lg bg-slate-900 px-4 py-2.5 font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
+              >
+                Продолжить
+              </button>
+            )}
           </section>
 
           {/* Успех: слот занят, гостю показывают подтверждение (спецификация §11). */}

@@ -23,6 +23,8 @@ async function chooseFirstFreeSlot(page: Page): Promise<string> {
     if ((await freeSlot.count()) > 0) {
       const timeLabel = (await freeSlot.locator('span').first().innerText()).trim()
       await freeSlot.click()
+      // Двухшаговый выбор: «Продолжить» открывает форму имени и email (§11).
+      await page.getByRole('button', { name: 'Продолжить' }).click()
       return timeLabel
     }
   }

@@ -19,6 +19,8 @@ test('гость бронирует свободный слот, а владел
     freeSlot = page.getByRole('button', { name: /Свободно/ }).first()
   }
   await freeSlot.click()
+  // Двухшаговый выбор: слот, затем «Продолжить» открывает форму (§11).
+  await page.getByRole('button', { name: 'Продолжить' }).click()
   const slotTime = (await freeSlot.textContent())?.match(/\d{2}:\d{2}–\d{2}:\d{2}/)?.[0] ?? ''
 
   await page.getByLabel('Имя').fill('Анна')

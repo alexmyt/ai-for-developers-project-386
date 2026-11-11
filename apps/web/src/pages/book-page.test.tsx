@@ -132,7 +132,9 @@ function deferredBooking(): {
 async function selectFreeSlot(user: ReturnType<typeof userEvent.setup>): Promise<void> {
   // Первый день выбран по умолчанию, в нём один свободный слот; ждём
   // загрузку календаря, прежде чем кликнуть. Имя кнопки — время и статус.
+  // Форма открывается не кликом по слоту, а кнопкой «Продолжить» (§11).
   await user.click(await screen.findByRole('button', { name: /10:00–10:30/ }))
+  await user.click(screen.getByRole('button', { name: 'Продолжить' }))
 }
 
 function renderBookPage(query = '?type=intro'): ReturnType<typeof render> {
@@ -188,6 +190,8 @@ describe('Страница записи', () => {
     await user.click(within(days).getByRole('button', { name: /13 ноября/ }))
 
     expect(screen.getByText('На этот день свободных слотов нет.')).toBeVisible()
+    // Слот не выбран — «Продолжить» неактивна (спецификация §11).
+    expect(screen.getByRole('button', { name: 'Продолжить' })).toBeDisabled()
     // Календарь на месте: дни по-прежнему можно переключать.
     expect(within(days).getAllByRole('button')).toHaveLength(14)
   })
@@ -223,7 +227,33 @@ describe('Страница записи', () => {
     expect(screen.getByRole('link', { name: 'На главную' }).getAttribute('href')).toBe('/')
   })
 
-  it('выбор свободного слота открывает форму имени и email', async () => {
+  it('выбор свободного слота активирует «Продолжить», но форма ещё закрыта', async () => {
+    const user = userEvent.setup()
+    renderBookPage()
+
+    // Пока слот не выбран, «Продолжить» неактивна (спецификация §11).
+    expect(await screen.findByRole('button', { name: 'Продолжить' })).toBeDisabled()
+
+    await user.click(screen.getByRole('button', { name: /10:00–10:30/ }))
+
+    // Слот выделен, кнопка активна, но имя и email спрашивают на следующем
+    // шаге — после «Продолжить» (спецификация §11).
+    expect(screen.getByRole('button', { name: /10:00–10:30/, pressed: true })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Продолжить' })).toBeEnabled()
+    expect(screen.queryByLabelText('Имя')).not.toBeInTheDocument()
+  })
+
+  it('когда в дне нет свободных слотов, «Продолжить» неактивна', async () => {
+    mockAvailability(availabilityWithFirstDay([takenSlot]))
+    renderBookPage()
+
+    // В первом дне только занятый слот: выбрать нечего, кнопка неактивна —
+    // так же она ведёт себя для типа без свободных слотов во всём окне (§11).
+    expect(await screen.findByText('11:00–11:30')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Продолжить' })).toBeDisabled()
+  })
+
+  it('«Продолжить» открывает форму имени и email', async () => {
     const user = userEvent.setup()
     renderBookPage()
     await selectFreeSlot(user)
@@ -294,6 +324,8 @@ describe('Страница записи', () => {
     expect(within(bookedRow as HTMLElement).getByText('Занято')).toBeVisible()
     // Число свободных слотов выбранного дня пересчитано.
     expect(screen.getByText('Свободных слотов на этот день: 0')).toBeVisible()
+    // Слот занят — «Продолжить» снова неактивна до нового выбора (§11).
+    expect(screen.getByRole('button', { name: 'Продолжить' })).toBeDisabled()
   })
 
   it('ошибка slot_taken показывает сообщение сервера', async () => {
@@ -323,8 +355,25 @@ describe('Страница записи', () => {
     await user.click(screen.getByRole('button', { name: 'Изменить' }))
 
     expect(screen.queryByLabelText('Имя')).not.toBeInTheDocument()
-    // Слот остаётся выбранным: его кнопка нажата (спецификация §11).
+    // Слот остаётся выбранным: его кнопка нажата, «Продолжить» активна
+    // и возвращает к форме (спецификация §11).
     expect(screen.getByRole('button', { name: /10:00–10:30/, pressed: true })).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Продолжить' })).toBeEnabled()
+  })
+
+  it('данные гостя сохраняются при возврате к выбору времени и обратно', async () => {
+    const user = userEvent.setup()
+    renderBookPage()
+    await selectFreeSlot(user)
+
+    await user.type(screen.getByLabelText('Имя'), 'Анна')
+    await user.type(screen.getByLabelText('Email'), 'anna@example.com')
+    await user.click(screen.getByRole('button', { name: 'Изменить' }))
+    await user.click(screen.getByRole('button', { name: 'Продолжить' }))
+
+    // Введённое не потерялось между шагами (спецификация §11).
+    expect(screen.getByLabelText('Имя')).toHaveValue('Анна')
+    expect(screen.getByLabelText('Email')).toHaveValue('anna@example.com')
   })
 
   it('после конфликта перечитывает календарь и показывает конфликтный слот занятым', async () => {
@@ -377,8 +426,10 @@ describe('Страница записи', () => {
     expect(screen.queryByLabelText('Имя')).not.toBeInTheDocument()
     expect(screen.getByText('10:00–10:30').closest('li')).toHaveTextContent('Занято')
 
-    // Выбор другого слота открывает форму с сохранёнными данными.
+    // Выбор другого слота и «Продолжить» открывают форму с сохранёнными
+    // данными (спецификация §11).
     await user.click(screen.getByRole('button', { name: /09:00–09:30/ }))
+    await user.click(screen.getByRole('button', { name: 'Продолжить' }))
     expect(screen.getByLabelText('Имя')).toHaveValue('Анна')
     expect(screen.getByLabelText('Email')).toHaveValue('anna@example.com')
   })
