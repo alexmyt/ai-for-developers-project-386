@@ -28,14 +28,26 @@ function bookingBody(overrides: Record<string, unknown> = {}): Record<string, un
   }
 }
 
-async function createAppWithFixedClock(): Promise<INestApplication> {
+/**
+ * Приложение с подвижным «сейчас»: тест двигает время между бронированием
+ * и чтением списка, чтобы проверить фильтрацию прошедших броней (§9).
+ */
+async function createAppWithMovableClock(
+  now: Date,
+): Promise<{ app: INestApplication; moveClockTo(next: Date): void }> {
+  const state = { now }
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(Clock)
-    .useValue({ now: () => new Date(FIXED_NOW) })
+    .useValue({ now: () => new Date(state.now) })
     .compile()
   const app = moduleRef.createNestApplication()
   configureApp(app)
   await app.init()
+  return { app, moveClockTo: (next) => (state.now = next) }
+}
+
+async function createAppWithFixedClock(): Promise<INestApplication> {
+  const { app } = await createAppWithMovableClock(FIXED_NOW)
   return app
 }
 
@@ -432,5 +444,107 @@ describe('POST /api/bookings', () => {
         expect(() => expectValidResponse('post', '/api/bookings', 409, response.body)).not.toThrow()
       }
     }
+  })
+})
+
+// Список владельца из спецификации §9: предстоящие брони всех типов
+// в одном списке, без пагинации.
+describe('GET /api/bookings', () => {
+  let app: INestApplication
+  let moveClockTo: (next: Date) => void
+
+  // Каждый тест создаёт своё приложение: брони меняют состояние в памяти,
+  // и тесты не должны зависеть от порядка выполнения.
+  beforeEach(async () => {
+    const created = await createAppWithMovableClock(FIXED_NOW)
+    app = created.app
+    moveClockTo = created.moveClockTo
+  })
+
+  afterAll(async () => {
+    await app.close()
+  })
+
+  it('отвечает 200 и пустым списком, когда броней ещё нет', async () => {
+    const response = await request(app.getHttpServer()).get('/api/bookings').expect(200)
+
+    expect(response.body).toEqual({ items: [] })
+    expect(() => expectValidResponse('get', '/api/bookings', 200, response.body)).not.toThrow()
+  })
+
+  it('показывает созданную бронь со всеми полями из спецификации §9', async () => {
+    await request(app.getHttpServer()).post('/api/bookings').send(bookingBody()).expect(201)
+
+    const response = await request(app.getHttpServer()).get('/api/bookings').expect(200)
+
+    expect((response.body as { items: unknown[] }).items).toEqual([
+      {
+        id: expect.any(String),
+        meetingTypeId: 'intro',
+        meetingTypeTitle: 'Знакомство',
+        start: NOV12_AT(10),
+        end: NOV12_AT(10, 30),
+        guestName: 'Анна',
+        guestEmail: 'anna@example.com',
+        createdAt: '2026-11-11T09:15:00Z',
+      },
+    ])
+    expect(() => expectValidResponse('get', '/api/bookings', 200, response.body)).not.toThrow()
+  })
+
+  it('скрывает бронь, когда её старт уже прошёл', async () => {
+    await request(app.getHttpServer()).post('/api/bookings').send(bookingBody()).expect(201)
+
+    // 12:00 по Москве 12 ноября: старт брони (10:00) позади (§9).
+    moveClockTo(new Date('2026-11-12T09:00:00Z'))
+
+    const response = await request(app.getHttpServer()).get('/api/bookings').expect(200)
+
+    expect((response.body as { items: unknown[] }).items).toEqual([])
+  })
+
+  it('оставляет бронь, старт которой совпадает с текущим моментом', async () => {
+    await request(app.getHttpServer()).post('/api/bookings').send(bookingBody()).expect(201)
+
+    // «Не раньше текущего момента» (§9): старт равен «сейчас» — бронь ещё видна.
+    moveClockTo(new Date(NOV12_AT(10)))
+
+    const response = await request(app.getHttpServer()).get('/api/bookings').expect(200)
+
+    expect((response.body as { items: unknown[] }).items).toHaveLength(1)
+  })
+
+  it('сортирует брони по start по возрастанию и показывает все типы вместе', async () => {
+    // Второй тип встречи: брони разных типов попадают в один список (§9).
+    await request(app.getHttpServer())
+      .post('/api/meeting-types')
+      .send({ id: 'review', title: 'Обзор проекта', durationMinutes: 60 })
+      .expect(201)
+
+    // Создаём в порядке: 12-е 11:00, 13-е 09:00, 12-е 10:00 — сортировка на сервере.
+    await request(app.getHttpServer())
+      .post('/api/bookings')
+      .send(bookingBody({ start: NOV12_AT(11), name: 'Борис', email: 'boris@example.com' }))
+      .expect(201)
+    await request(app.getHttpServer())
+      .post('/api/bookings')
+      .send({
+        meetingTypeId: 'review',
+        start: new Date(Date.UTC(2026, 10, 13, 6)).toISOString().replace('.000Z', 'Z'),
+        name: 'Вера',
+        email: 'vera@example.com',
+      })
+      .expect(201)
+    await request(app.getHttpServer()).post('/api/bookings').send(bookingBody()).expect(201)
+
+    const response = await request(app.getHttpServer()).get('/api/bookings').expect(200)
+
+    const items = (response.body as { items: { start: string; guestName: string }[] }).items
+    expect(items.map((item) => [item.start, item.guestName])).toEqual([
+      [NOV12_AT(10), 'Анна'],
+      [NOV12_AT(11), 'Борис'],
+      [new Date(Date.UTC(2026, 10, 13, 6)).toISOString().replace('.000Z', 'Z'), 'Вера'],
+    ])
+    expect(() => expectValidResponse('get', '/api/bookings', 200, response.body)).not.toThrow()
   })
 })
