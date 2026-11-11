@@ -1,5 +1,5 @@
-import { HttpException, HttpStatus } from '@nestjs/common'
 import { MEETING_TYPE_ID_MAX_LENGTH, MEETING_TYPE_ID_PATTERN } from '../config/calendar'
+import { requireJsonObject, requireStringField, validationError } from '../validation/validation'
 
 /** Название на карточке для гостя: 1–100 символов после trim (спецификация §6). */
 export const MEETING_TYPE_TITLE_MAX_LENGTH = 100
@@ -20,32 +20,18 @@ export interface CreateMeetingTypeInput {
   durationMinutes: number
 }
 
-/** Ошибка валидации в едином конверте { code, message } (спецификация §10). */
-function validationError(message: string): HttpException {
-  return new HttpException({ code: 'validation_error', message }, HttpStatus.BAD_REQUEST)
-}
-
 /**
  * Проверяет форму и поля запроса на создание типа (спецификация §6.1)
  * и нормализует их: title и description обрезаются, пустое описание
  * превращается в null. Нарушение — 400 validation_error.
  */
 export function validateCreateMeetingTypeRequest(request: unknown): CreateMeetingTypeInput {
-  if (typeof request !== 'object' || request === null || Array.isArray(request)) {
-    throw validationError('Тело запроса должно быть объектом JSON')
-  }
-  const body = request as Record<string, unknown>
+  const body = requireJsonObject(request)
 
   // id — внешний идентификатор, который задаёт владелец: 1–50 символов
   // по шаблону. Минимальная длина выводится из шаблона, поэтому отдельной
   // проверки на пустоту не нужно.
-  const id = body.id
-  if (id === undefined) {
-    throw validationError('Поле id обязательно')
-  }
-  if (typeof id !== 'string') {
-    throw validationError('Поле id должно быть строкой')
-  }
+  const id = requireStringField(body, 'id')
   if (id.length > MEETING_TYPE_ID_MAX_LENGTH) {
     throw validationError(`Поле id должно быть не длиннее ${MEETING_TYPE_ID_MAX_LENGTH} символов`)
   }
@@ -56,13 +42,7 @@ export function validateCreateMeetingTypeRequest(request: unknown): CreateMeetin
   }
 
   // title — 1–100 символов после trim.
-  const title = body.title
-  if (title === undefined) {
-    throw validationError('Поле title обязательно')
-  }
-  if (typeof title !== 'string') {
-    throw validationError('Поле title должно быть строкой')
-  }
+  const title = requireStringField(body, 'title')
   const trimmedTitle = title.trim()
   if (trimmedTitle.length < 1 || trimmedTitle.length > MEETING_TYPE_TITLE_MAX_LENGTH) {
     throw validationError(
