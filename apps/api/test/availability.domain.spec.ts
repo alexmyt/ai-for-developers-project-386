@@ -3,6 +3,8 @@ import { moscowDateString, moscowInstantAt } from '../src/availability/moscow-ti
 import { buildDayGrid } from '../src/availability/slot-grid'
 import { buildAvailability } from '../src/availability/availability.domain'
 import type { BookingInterval } from '../src/availability/availability.domain'
+import type { AvailabilityDay } from '../src/availability/availability'
+import { at, required } from './asserts'
 
 // Часовой пояс из спецификации §2: Europe/Moscow, UTC+3 круглый год
 // (docs/spec/calendar.md). Пример из §3: 2026-11-12T07:00:00Z — это
@@ -31,8 +33,8 @@ describe('сетка слотов', () => {
     const slots = buildDayGrid('2026-11-12', 30)
 
     expect(slots).toHaveLength(18)
-    expect(slots[0].start.toISOString()).toBe('2026-11-12T06:00:00.000Z') // 09:00 по Москве
-    const last = slots[slots.length - 1]
+    expect(at(slots, 0).start.toISOString()).toBe('2026-11-12T06:00:00.000Z') // 09:00 по Москве
+    const last = at(slots, slots.length - 1)
     expect(last.start.toISOString()).toBe('2026-11-12T14:30:00.000Z') // 17:30 по Москве
     expect(last.end.toISOString()).toBe('2026-11-12T15:00:00.000Z') // 18:00 по Москве
   })
@@ -41,9 +43,9 @@ describe('сетка слотов', () => {
     const slots = buildDayGrid('2026-11-12', 30)
 
     for (let i = 1; i < slots.length; i += 1) {
-      expect(slots[i].start.getTime() - slots[i - 1].start.getTime()).toBe(30 * 60_000)
+      expect(at(slots, i).start.getTime() - at(slots, i - 1).start.getTime()).toBe(30 * 60_000)
       // Длительность слота равна длительности типа встречи.
-      expect(slots[i].end.getTime() - slots[i].start.getTime()).toBe(30 * 60_000)
+      expect(at(slots, i).end.getTime() - at(slots, i).start.getTime()).toBe(30 * 60_000)
     }
   })
 
@@ -51,7 +53,7 @@ describe('сетка слотов', () => {
     const slots = buildDayGrid('2026-11-12', 60)
 
     expect(slots).toHaveLength(17)
-    const last = slots[slots.length - 1]
+    const last = at(slots, slots.length - 1)
     expect(last.start.toISOString()).toBe('2026-11-12T14:00:00.000Z') // 17:00 по Москве
     expect(last.end.toISOString()).toBe('2026-11-12T15:00:00.000Z') // 18:00 по Москве
   })
@@ -81,8 +83,8 @@ describe('окно записи', () => {
     })
 
     expect(result.days).toHaveLength(14)
-    expect(result.days[0].date).toBe('2026-11-11')
-    expect(result.days[13].date).toBe('2026-11-24')
+    expect(at(result.days, 0).date).toBe('2026-11-11')
+    expect(at(result.days, 13).date).toBe('2026-11-24')
   })
 
   it('смену московского дня определяет дата по Москве, а не UTC', () => {
@@ -100,8 +102,8 @@ describe('окно записи', () => {
       bookings: [],
     })
 
-    expect(before.days[0].date).toBe('2026-11-11')
-    expect(after.days[0].date).toBe('2026-11-12')
+    expect(at(before.days, 0).date).toBe('2026-11-11')
+    expect(at(after.days, 0).date).toBe('2026-11-12')
   })
 
   it('пустой день всё равно присутствует в ответе', () => {
@@ -113,7 +115,7 @@ describe('окно записи', () => {
       bookings: [],
     })
 
-    expect(result.days[0]).toEqual({ date: '2026-11-11', slots: [] })
+    expect(at(result.days, 0)).toEqual({ date: '2026-11-11', slots: [] })
   })
 })
 
@@ -128,9 +130,10 @@ describe('прошедшие старты', () => {
       bookings: [],
     })
 
-    expect(result.days[0].slots[0].start).toBe('2026-11-11T09:30:00Z')
+    const today = at(at(result.days, 0).slots, 0)
+    expect(today.start).toBe('2026-11-11T09:30:00Z')
     // Старты 12:30–17:30 — это 11 слотов.
-    expect(result.days[0].slots).toHaveLength(11)
+    expect(at(result.days, 0).slots).toHaveLength(11)
   })
 
   it('скрывает слот, начинающийся ровно сейчас', () => {
@@ -142,7 +145,7 @@ describe('прошедшие старты', () => {
       bookings: [],
     })
 
-    expect(result.days[0].slots[0].start).toBe('2026-11-11T10:00:00Z')
+    expect(at(at(result.days, 0).slots, 0).start).toBe('2026-11-11T10:00:00Z')
   })
 })
 
@@ -162,22 +165,20 @@ describe('статусы слотов по пересечению с броня�
     })
   }
 
-  function statusOn(
-    day: { date: string; slots: { start: string; status: string }[] },
-    startIso: string,
-  ): string {
-    const slot = day.slots.find((slot) => slot.start === startIso)
-    expect(slot, `слот ${startIso} должен быть в ответе`).toBeDefined()
-    return (slot as { start: string; status: string }).status
+  function statusOn(day: AvailabilityDay, startIso: string): string {
+    const slot = required(
+      day.slots.find((slot) => slot.start === startIso),
+      `слот ${startIso}`,
+    )
+    return slot.status
   }
 
-  const dayOf = (result: {
-    days: { date: string; slots: { start: string; status: string }[] }[]
-  }) =>
-    result.days.find((day) => day.date === DAY) as {
-      date: string
-      slots: { start: string; status: string }
-    }
+  function dayOf(result: { days: AvailabilityDay[] }): AvailabilityDay {
+    return required(
+      result.days.find((day) => day.date === DAY),
+      `день ${DAY} в ответе`,
+    )
+  }
 
   it('без броней все слоты свободны', () => {
     const day = dayOf(availabilityWith([]))

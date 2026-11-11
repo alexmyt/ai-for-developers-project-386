@@ -23,3 +23,9 @@ export const SEED_MEETING_TYPE_TITLE = 'Знакомство'
 
 /** Длительность сид-типа встречи в минутах. */
 export const SEED_MEETING_TYPE_DURATION_MINUTES = 30
+
+/** Формат id типа встречи, который задаёт владелец. */
+export const MEETING_TYPE_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+/** Максимальная длина id типа встречи. */
+export const MEETING_TYPE_ID_MAX_LENGTH = 50

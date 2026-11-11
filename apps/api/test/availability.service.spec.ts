@@ -7,6 +7,7 @@ import { AppModule } from '../src/app.module'
 import { AvailabilityService } from '../src/availability/availability.service'
 import { BookingsService } from '../src/bookings/bookings.service'
 import { Clock } from '../src/clock/clock'
+import { at, required } from './asserts'
 
 // 12:15 по Москве 11 ноября: «сегодня» фиксировано подменой Clock (ADR-0003),
 // поэтому тесты не зависят от даты запуска.
@@ -37,8 +38,8 @@ describe('AvailabilityService с подменённым Clock', () => {
     const result = availabilityService.get('intro')
 
     expect(result.days).toHaveLength(14)
-    expect(result.days[0].date).toBe('2026-11-11')
-    expect(result.days[13].date).toBe('2026-11-24')
+    expect(at(result.days, 0).date).toBe('2026-11-11')
+    expect(at(result.days, 13).date).toBe('2026-11-24')
   })
 
   it('бронь из хранилища делает пересекающиеся слоты занятыми', () => {
@@ -51,7 +52,10 @@ describe('AvailabilityService с подменённым Clock', () => {
     })
 
     const result = availabilityService.get('intro')
-    const day = result.days.find((d) => d.date === '2026-11-12')
+    const day = required(
+      result.days.find((d) => d.date === '2026-11-12'),
+      'день 2026-11-12 в ответе',
+    )
     const takenStarts = day.slots.filter((s) => s.status === 'taken').map((s) => s.start)
 
     expect(takenStarts).toEqual(['2026-11-12T07:00:00Z', '2026-11-12T07:30:00Z'])

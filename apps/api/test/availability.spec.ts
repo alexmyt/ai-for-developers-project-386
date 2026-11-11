@@ -41,7 +41,10 @@ function moscowTimeOf(iso: string): string {
 
 /** Ожидаемое окно: сегодня + 13 следующих дней по Москве. */
 function expectedWindowDates(): string[] {
-  const [year, month, day] = todayMoscow().split('-').map(Number)
+  const today = todayMoscow()
+  const year = Number(today.slice(0, 4))
+  const month = Number(today.slice(5, 7))
+  const day = Number(today.slice(8, 10))
   return Array.from({ length: 14 }, (_, offset) =>
     new Date(Date.UTC(year, month - 1, day + offset)).toISOString().slice(0, 10),
   )

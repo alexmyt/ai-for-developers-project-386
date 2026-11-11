@@ -48,6 +48,28 @@ export type AvailabilitySlot = {
 }
 
 /**
+ * Данные для создания типа встречи: все поля задаёт владелец (спецификация §6.1).
+ */
+export type CreateMeetingTypeRequest = {
+  /**
+   * Внешний идентификатор: 1–50 символов, латиница в нижнем регистре и дефисы.
+   */
+  id: string
+  /**
+   * Название на карточке для гостя: 1–100 символов.
+   */
+  title: string
+  /**
+   * Описание для гостя: до 500 символов; если не передано или пустое — null.
+   */
+  description?: string | null
+  /**
+   * Длительность в минутах: от 30 до 240, кратна 30.
+   */
+  durationMinutes: number
+}
+
+/**
  * Тип встречи — шаблон, заданный владельцем: размер слота и подпись
  * на гостевой странице (спецификация §6, docs/spec/calendar.md).
  */
@@ -71,29 +93,34 @@ export type MeetingType = {
 }
 
 /**
- * 404: тип встречи с таким id не существует (спецификация §10).
+ * Конфликт: тип встречи с таким id уже создан (спецификация §10).
  */
-export type MeetingTypeNotFoundError = {
+export type MeetingTypeExistsResponse = {
+  code: 'meeting_type_exists'
   /**
-   * Машинночитаемый код ошибки.
-   */
-  code: 'meeting_type_not_found'
-  /**
-   * Сообщение для человека; тестами не проверяется (спецификация §8).
+   * Человекочитаемое описание конфликта.
    */
   message: string
 }
 
 /**
- * 400: неверная форма запроса или поля (спецификация §10).
+ * Тип встречи с таким id не существует: 404 (спецификация §10).
  */
-export type ValidationError = {
+export type MeetingTypeNotFoundResponse = {
+  code: 'meeting_type_not_found'
   /**
-   * Машинночитаемый код ошибки.
+   * Человекочитаемое сообщение; тестами не проверяется (спецификация §8).
    */
+  message: string
+}
+
+/**
+ * Ошибка валидации: неверная форма запроса или поля (спецификация §10).
+ */
+export type ValidationErrorResponse = {
   code: 'validation_error'
   /**
-   * Сообщение для человека; тестами не проверяется (спецификация §8).
+   * Человекочитаемое описание того, что не так с запросом.
    */
   message: string
 }
@@ -109,13 +136,13 @@ export type GetAvailabilityData = {
 
 export type GetAvailabilityErrors = {
   /**
-   * 400: неверная форма запроса или поля (спецификация §10).
+   * Ошибка валидации: неверная форма запроса или поля (спецификация §10).
    */
-  400: ValidationError
+  400: ValidationErrorResponse
   /**
-   * 404: тип встречи с таким id не существует (спецификация §10).
+   * Тип встречи с таким id не существует: 404 (спецификация §10).
    */
-  404: MeetingTypeNotFoundError
+  404: MeetingTypeNotFoundResponse
 }
 
 export type GetAvailabilityError = GetAvailabilityErrors[keyof GetAvailabilityErrors]
@@ -164,3 +191,32 @@ export type ListMeetingTypesResponses = {
 }
 
 export type ListMeetingTypesResponse = ListMeetingTypesResponses[keyof ListMeetingTypesResponses]
+
+export type CreateMeetingTypeData = {
+  body: CreateMeetingTypeRequest
+  path?: never
+  query?: never
+  url: '/api/meeting-types'
+}
+
+export type CreateMeetingTypeErrors = {
+  /**
+   * Ошибка валидации: неверная форма запроса или поля (спецификация §10).
+   */
+  400: ValidationErrorResponse
+  /**
+   * Конфликт: тип встречи с таким id уже создан (спецификация §10).
+   */
+  409: MeetingTypeExistsResponse
+}
+
+export type CreateMeetingTypeError = CreateMeetingTypeErrors[keyof CreateMeetingTypeErrors]
+
+export type CreateMeetingTypeResponses = {
+  /**
+   * Успешное создание: 201 с созданным типом (спецификация §6.1).
+   */
+  201: MeetingType
+}
+
+export type CreateMeetingTypeResponse = CreateMeetingTypeResponses[keyof CreateMeetingTypeResponses]

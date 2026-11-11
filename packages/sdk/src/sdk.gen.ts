@@ -3,6 +3,9 @@
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client'
 import { client } from './client.gen'
 import type {
+  CreateMeetingTypeData,
+  CreateMeetingTypeErrors,
+  CreateMeetingTypeResponses,
   GetAvailabilityData,
   GetAvailabilityErrors,
   GetAvailabilityResponses,
@@ -62,4 +65,24 @@ export const listMeetingTypes = <ThrowOnError extends boolean = false>(
   (options?.client ?? client).get<ListMeetingTypesResponses, unknown, ThrowOnError>({
     url: '/api/meeting-types',
     ...options,
+  })
+
+/**
+ * Создание типа встречи: id задаёт владелец, сервер его не генерирует
+ * (спецификация §6.1). Проверки идут в порядке: форма и поля → уникальность id.
+ */
+export const createMeetingType = <ThrowOnError extends boolean = false>(
+  options: Options<CreateMeetingTypeData, ThrowOnError>,
+): RequestResult<CreateMeetingTypeResponses, CreateMeetingTypeErrors, ThrowOnError> =>
+  (options.client ?? client).post<
+    CreateMeetingTypeResponses,
+    CreateMeetingTypeErrors,
+    ThrowOnError
+  >({
+    url: '/api/meeting-types',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
   })

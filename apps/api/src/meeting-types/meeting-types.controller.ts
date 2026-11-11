@@ -1,4 +1,4 @@
-import { Controller, Get } from '@nestjs/common'
+import { Body, Controller, Get, Post } from '@nestjs/common'
 import { MeetingTypesService } from './meeting-types.service'
 import type { MeetingType } from './meeting-type'
 
@@ -10,5 +10,11 @@ export class MeetingTypesController {
   @Get()
   list(): { items: MeetingType[] } {
     return { items: this.meetingTypesService.list() }
+  }
+
+  /** Создание типа встречи: id задаёт владелец (§6.1). */
+  @Post()
+  create(@Body() body: unknown): MeetingType {
+    return this.meetingTypesService.create(body)
   }
 }
