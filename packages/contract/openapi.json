@@ -36,7 +36,70 @@
           }
         }
       }
+    },
+    "/api/meeting-types": {
+      "get": {
+        "operationId": "listMeetingTypes",
+        "description": "Список типов встреч в порядке создания, сид-тип идёт первым (спецификация §6.2).",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MeetingType"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
-  "components": {}
+  "components": {
+    "schemas": {
+      "MeetingType": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "description",
+          "durationMinutes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Внешний идентификатор: задаёт владелец, уникален и не меняется."
+          },
+          "title": {
+            "type": "string",
+            "description": "Название на карточке для гостя."
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Описание для гостя; если не задано или пустое — null."
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Длительность в минутах: от 30 до 240, кратна 30."
+          }
+        },
+        "description": "Тип встречи — шаблон, заданный владельцем: размер слота и подпись\nна гостевой странице (спецификация §6, docs/spec/calendar.md)."
+      }
+    }
+  }
 }
