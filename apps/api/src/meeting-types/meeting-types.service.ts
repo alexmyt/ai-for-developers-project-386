@@ -27,4 +27,9 @@ export class MeetingTypesService {
   list(): MeetingType[] {
     return [...this.items.values()]
   }
+
+  /** Тип встречи по id или undefined, если такого типа нет. */
+  get(id: string): MeetingType | undefined {
+    return this.items.get(id)
+  }
 }
