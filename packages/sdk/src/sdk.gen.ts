@@ -3,6 +3,9 @@
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client'
 import { client } from './client.gen'
 import type {
+  CreateBookingData,
+  CreateBookingErrors,
+  CreateBookingResponses,
   CreateMeetingTypeData,
   CreateMeetingTypeErrors,
   CreateMeetingTypeResponses,
@@ -43,6 +46,23 @@ export const getAvailability = <ThrowOnError extends boolean = false>(
   (options.client ?? client).get<GetAvailabilityResponses, GetAvailabilityErrors, ThrowOnError>({
     url: '/api/availability',
     ...options,
+  })
+
+/**
+ * Бронирование свободного слота гостем (спецификация §8). Проверки идут
+ * в фиксированном порядке: форма и поля → тип встречи → окно записи →
+ * сетка → пересечения внутри мьютекса по дате.
+ */
+export const createBooking = <ThrowOnError extends boolean = false>(
+  options: Options<CreateBookingData, ThrowOnError>,
+): RequestResult<CreateBookingResponses, CreateBookingErrors, ThrowOnError> =>
+  (options.client ?? client).post<CreateBookingResponses, CreateBookingErrors, ThrowOnError>({
+    url: '/api/bookings',
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
   })
 
 /**
