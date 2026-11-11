@@ -29,6 +29,11 @@ export class MeetingTypesService {
     return [...this.items.values()]
   }
 
+  /** Тип встречи по id или undefined, если такого типа нет. */
+  get(id: string): MeetingType | undefined {
+    return this.items.get(id)
+  }
+
   /**
    * Создаёт тип встречи с id от владельца (спецификация §6.1): сначала
    * проверяются форма и поля, потом уникальность id. Дубль id — конфликт.

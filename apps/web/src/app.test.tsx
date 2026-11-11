@@ -2,11 +2,12 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { listMeetingTypes, type MeetingType } from '@repo/sdk'
+import { getAvailability, listMeetingTypes, type Availability, type MeetingType } from '@repo/sdk'
 import { AppRoutes } from './App'
 
 // Сеть подменяется на уровне SDK, а не через моки fetch (спецификация §13.3).
 vi.mock('@repo/sdk', () => ({
+  getAvailability: vi.fn(),
   listMeetingTypes: vi.fn(),
 }))
 
@@ -16,6 +17,22 @@ const introType: MeetingType = {
   title: 'Знакомство',
   description: null,
   durationMinutes: 30,
+}
+
+// Окно записи для страницы записи: 14 дней, у первого — один слот.
+function availabilityFixture(): Availability {
+  const freeSlot = {
+    start: '2026-11-11T07:00:00Z',
+    end: '2026-11-11T07:30:00Z',
+    status: 'free',
+  } as const
+  return {
+    meetingTypeId: 'intro',
+    days: Array.from({ length: 14 }, (_, offset) => ({
+      date: new Date(Date.UTC(2026, 10, 11 + offset)).toISOString().slice(0, 10),
+      slots: offset === 0 ? [freeSlot] : [],
+    })),
+  }
 }
 
 function renderApp(initialPath: string) {
@@ -32,6 +49,10 @@ function mockMeetingTypes(items: MeetingType[]): void {
 
 beforeEach(() => {
   mockMeetingTypes([introType])
+  vi.mocked(getAvailability).mockResolvedValue({
+    data: availabilityFixture(),
+    error: undefined,
+  })
 })
 
 describe('Главная страница', () => {
@@ -75,21 +96,23 @@ describe('Главная страница', () => {
     expect(await screen.findByRole('alert')).toBeVisible()
   })
 
-  it('ведёт на заглушку страницы записи по кнопке «Записаться»', async () => {
+  it('ведёт на страницу записи с календарём по кнопке «Записаться»', async () => {
     const user = userEvent.setup()
     renderApp('/')
 
     await user.click(await screen.findByRole('link', { name: 'Записаться' }))
 
-    expect(screen.getByRole('heading', { name: 'Записаться' })).toBeVisible()
-    expect(screen.getByText('Флоу записи появится на следующем этапе.')).toBeVisible()
+    // Календарь окна записи на 14 дней (спецификация §7).
+    expect(await screen.findByRole('heading', { name: 'Выберите время' })).toBeVisible()
+    const days = screen.getByRole('group', { name: 'Дни записи' })
+    expect(days.querySelectorAll('button')).toHaveLength(14)
   })
 
   it('позволяет вернуться на главную со страницы записи', async () => {
     const user = userEvent.setup()
-    renderApp('/book')
+    renderApp('/book?type=intro')
 
-    await user.click(screen.getByRole('link', { name: 'На главную' }))
+    await user.click(await screen.findByRole('link', { name: 'На главную' }))
 
     expect(screen.getByRole('heading', { name: 'Календарь звонков' })).toBeVisible()
   })

@@ -5,6 +5,49 @@ export type ClientOptions = {
 }
 
 /**
+ * Доступность типа встречи на всё окно записи одним ответом (спецификация §7).
+ */
+export type Availability = {
+  meetingTypeId: string
+  /**
+   * Ровно 14 дней, начиная с сегодняшнего по Москве.
+   */
+  days: Array<AvailabilityDay>
+}
+
+/**
+ * Календарный день по Москве со слотами рабочего дня.
+ */
+export type AvailabilityDay = {
+  /**
+   * Дата по Москве в формате YYYY-MM-DD.
+   */
+  date: string
+  /**
+   * Слоты дня; прошедшие старты скрыты, пустой день — нормальное состояние.
+   */
+  slots: Array<AvailabilitySlot>
+}
+
+/**
+ * Слот в сетке дня: интервал-кандидат со статусом, ещё не бронь (спецификация §4).
+ */
+export type AvailabilitySlot = {
+  /**
+   * UTC-инстант старта слота в ISO 8601 с Z.
+   */
+  start: string
+  /**
+   * UTC-инстант окончания слота в ISO 8601 с Z.
+   */
+  end: string
+  /**
+   * `free` — пересечений с бронями нет, `taken` — есть пересечение (спецификация §5).
+   */
+  status: 'free' | 'taken'
+}
+
+/**
  * Данные для создания типа встречи: все поля задаёт владелец (спецификация §6.1).
  */
 export type CreateMeetingTypeRequest = {
@@ -61,6 +104,17 @@ export type MeetingTypeExistsResponse = {
 }
 
 /**
+ * Тип встречи с таким id не существует: 404 (спецификация §10).
+ */
+export type MeetingTypeNotFoundResponse = {
+  code: 'meeting_type_not_found'
+  /**
+   * Человекочитаемое сообщение; тестами не проверяется (спецификация §8).
+   */
+  message: string
+}
+
+/**
  * Ошибка валидации: неверная форма запроса или поля (спецификация §10).
  */
 export type ValidationErrorResponse = {
@@ -70,6 +124,37 @@ export type ValidationErrorResponse = {
    */
   message: string
 }
+
+export type GetAvailabilityData = {
+  body?: never
+  path?: never
+  query: {
+    meetingTypeId: string
+  }
+  url: '/api/availability'
+}
+
+export type GetAvailabilityErrors = {
+  /**
+   * Ошибка валидации: неверная форма запроса или поля (спецификация §10).
+   */
+  400: ValidationErrorResponse
+  /**
+   * Тип встречи с таким id не существует: 404 (спецификация §10).
+   */
+  404: MeetingTypeNotFoundResponse
+}
+
+export type GetAvailabilityError = GetAvailabilityErrors[keyof GetAvailabilityErrors]
+
+export type GetAvailabilityResponses = {
+  /**
+   * The request has succeeded.
+   */
+  200: Availability
+}
+
+export type GetAvailabilityResponse = GetAvailabilityResponses[keyof GetAvailabilityResponses]
 
 export type HealthData = {
   body?: never
