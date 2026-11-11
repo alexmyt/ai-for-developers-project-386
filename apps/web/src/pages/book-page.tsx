@@ -53,6 +53,11 @@ export function BookPage() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [bookedSlot, setBookedSlot] = useState<AvailabilitySlot | null>(null)
 
+  // Данные гостя живут на уровне страницы: после конфликта гость
+  // возвращается к выбору слота, не теряя введённое (§11).
+  const [guestName, setGuestName] = useState('')
+  const [guestEmail, setGuestEmail] = useState('')
+
   useEffect(() => {
     if (!meetingTypeId) {
       setLoadState('error')
@@ -115,13 +120,31 @@ export function BookPage() {
     )
   }
 
+  /**
+   * Перечитывает доступность через SDK: конфликтный слот и брони других
+   * гостей становятся занятыми (спецификация §11).
+   */
+  async function refreshAvailability(): Promise<void> {
+    if (!meetingTypeId) {
+      return
+    }
+    try {
+      const { data, error } = await getAvailability({ query: { meetingTypeId } })
+      if (!error && data) {
+        setAvailability(data)
+      }
+    } catch {
+      // При ошибке перечитывания остаётся локальная пометка конфликтного
+      // слота; остальные статусы обновятся при следующей загрузке.
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!selectedSlot || !meetingTypeId) {
       return
     }
 
-    const formData = new FormData(event.currentTarget)
     setIsSubmitting(true)
     setSubmitError(null)
 
@@ -130,14 +153,23 @@ export function BookPage() {
         body: {
           meetingTypeId,
           start: selectedSlot.start,
-          name: String(formData.get('name') ?? ''),
-          email: String(formData.get('email') ?? ''),
+          name: guestName,
+          email: guestEmail,
         },
       })
 
       if (error) {
-        // slot_taken объясняет, что время только что заняли, и предлагает
-        // выбрать другой слот (спецификация §11).
+        if (error.code === 'slot_taken') {
+          // Конфликт: время только что заняли. Гость возвращается к выбору
+          // слота с сохранением имени и email, календарь перечитывается
+          // (спецификация §11).
+          setSubmitError(error.message)
+          setFormOpen(false)
+          setSelectedSlot(null)
+          markSlotTaken(selectedSlot.start)
+          void refreshAvailability()
+          return
+        }
         setSubmitError(error.message)
         return
       }
@@ -214,6 +246,14 @@ export function BookPage() {
             )}
           </section>
 
+          {/* Ошибка отправки брони: видна и при открытой форме, и после
+              возврата к выбору слота — конфликт (спецификация §11). */}
+          {submitError && (
+            <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+              {submitError}
+            </p>
+          )}
+
           {/* Слоты выбранного дня: пустой день — нормальное состояние (§4). */}
           <section aria-label="Слоты дня">
             <h2 className="mb-2 text-sm font-medium text-slate-500">
@@ -277,11 +317,6 @@ export function BookPage() {
                 <h2 className="text-lg font-semibold text-slate-900">
                   Выбрано время: {slotLabel(selectedSlot.start, selectedSlot.end)}
                 </h2>
-                {submitError && (
-                  <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
-                    {submitError}
-                  </p>
-                )}
                 <div className="flex flex-col gap-1">
                   <label htmlFor="guest-name" className="font-medium text-slate-900">
                     Имя
@@ -292,6 +327,8 @@ export function BookPage() {
                     type="text"
                     required
                     maxLength={100}
+                    value={guestName}
+                    onChange={(event) => setGuestName(event.target.value)}
                     className="rounded-lg border border-slate-300 px-3 py-2 focus:border-slate-500 focus:outline-none"
                   />
                 </div>
@@ -305,6 +342,8 @@ export function BookPage() {
                     type="email"
                     required
                     maxLength={254}
+                    value={guestEmail}
+                    onChange={(event) => setGuestEmail(event.target.value)}
                     className="rounded-lg border border-slate-300 px-3 py-2 focus:border-slate-500 focus:outline-none"
                   />
                 </div>
