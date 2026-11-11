@@ -2,27 +2,11 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
 import { listBookings } from '@repo/sdk'
 import type { Booking } from '@repo/sdk'
+import { dateLabel, slotLabel } from '../lib/calendar-ui'
 
 // Список владельца загружается при входе в раздел и обновляется опросом:
 // новая бронь появляется без перезагрузки страницы (критерий приёмки #25).
 const REFETCH_INTERVAL_MS = 5000
-
-// Время показываем по Москве — пояс владельца (спецификация §3).
-const timeFormatter = new Intl.DateTimeFormat('ru-RU', {
-  timeZone: 'Europe/Moscow',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
-  timeZone: 'Europe/Moscow',
-  day: 'numeric',
-  month: 'long',
-})
-
-function slotLabel(startIso: string, endIso: string): string {
-  return `${timeFormatter.format(new Date(startIso))}–${timeFormatter.format(new Date(endIso))}`
-}
 
 // Раздел владельца «Предстоящие события»: брони всех типов в одном
 // списке (спецификация §9, §11). Сортировку и фильтр делает сервер.
@@ -90,8 +74,7 @@ export function AdminBookingsPage() {
               <div className="flex items-baseline justify-between gap-2">
                 <h2 className="text-lg font-semibold text-slate-900">{booking.guestName}</h2>
                 <p className="shrink-0 text-sm text-slate-600">
-                  {dateFormatter.format(new Date(booking.start))},{' '}
-                  {slotLabel(booking.start, booking.end)}
+                  {dateLabel(booking.start)}, {slotLabel(booking.start, booking.end)}
                 </p>
               </div>
               <p className="mt-1 text-slate-600">{booking.guestEmail}</p>
@@ -100,7 +83,7 @@ export function AdminBookingsPage() {
                 <span>{booking.meetingTypeTitle}</span>
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                Запись создана {dateFormatter.format(new Date(booking.createdAt))}
+                Запись создана {dateLabel(booking.createdAt)}
               </p>
             </li>
           ))}

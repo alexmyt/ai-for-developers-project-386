@@ -2,9 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { createMeetingType } from '@repo/sdk'
 import type { CreateMeetingTypeRequest } from '@repo/sdk'
-
-// Длительность кратна шагу сетки: варианты от 30 до 240 минут (спецификация §6).
-const DURATION_OPTIONS = [30, 60, 90, 120, 150, 180, 210, 240]
+import { DURATION_OPTIONS, INPUT_LIMITS } from '../lib/calendar-ui'
 
 // Экран владельца: создание типа встречи (спецификация §11).
 export function AdminPage() {
@@ -78,7 +76,7 @@ export function AdminPage() {
             id="meeting-type-id"
             name="id"
             type="text"
-            maxLength={50}
+            maxLength={INPUT_LIMITS.meetingTypeId}
             aria-describedby={idError ? 'meeting-type-id-error' : undefined}
             className="rounded-lg border border-slate-300 px-3 py-2 focus:border-slate-500 focus:outline-none"
           />
@@ -99,7 +97,7 @@ export function AdminPage() {
             id="meeting-type-title"
             name="title"
             type="text"
-            maxLength={100}
+            maxLength={INPUT_LIMITS.title}
             className="rounded-lg border border-slate-300 px-3 py-2 focus:border-slate-500 focus:outline-none"
           />
         </div>
@@ -111,7 +109,7 @@ export function AdminPage() {
             id="meeting-type-description"
             name="description"
             rows={3}
-            maxLength={500}
+            maxLength={INPUT_LIMITS.description}
             className="rounded-lg border border-slate-300 px-3 py-2 focus:border-slate-500 focus:outline-none"
           />
         </div>

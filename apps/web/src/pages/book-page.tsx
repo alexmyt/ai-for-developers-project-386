@@ -2,34 +2,11 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { createBooking, getAvailability, listMeetingTypes } from '@repo/sdk'
 import type { Availability, AvailabilityDay, AvailabilitySlot, MeetingType } from '@repo/sdk'
+import { INPUT_LIMITS, dayLabel, slotLabel } from '../lib/calendar-ui'
 
 // Страница записи: календарь на 14 дней и двухшаговый выбор — свободный
 // слот, затем по «Продолжить» форма имени и email (спецификация §7, §8, §11).
 type LoadState = 'loading' | 'error' | 'success'
-
-// Время показываем по Москве — пояс владельца (спецификация §3).
-const timeFormatter = new Intl.DateTimeFormat('ru-RU', {
-  timeZone: 'Europe/Moscow',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-const dayFormatter = new Intl.DateTimeFormat('ru-RU', {
-  timeZone: 'Europe/Moscow',
-  weekday: 'short',
-  day: 'numeric',
-  month: 'long',
-})
-
-function dayLabel(date: string): string {
-  return dayFormatter.format(new Date(`${date}T00:00:00Z`))
-}
-
-function slotLabel(startIso: string, endIso: string): string {
-  const start = timeFormatter.format(new Date(startIso))
-  const end = timeFormatter.format(new Date(endIso))
-  return `${start}–${end}`
-}
 
 const STATUS_LABELS: Record<AvailabilityDay['slots'][number]['status'], string> = {
   free: 'Свободно',
@@ -347,7 +324,7 @@ export function BookPage() {
                     name="name"
                     type="text"
                     required
-                    maxLength={100}
+                    maxLength={INPUT_LIMITS.guestName}
                     value={guestName}
                     onChange={(event) => setGuestName(event.target.value)}
                     className="rounded-lg border border-slate-300 px-3 py-2 focus:border-slate-500 focus:outline-none"
@@ -362,7 +339,7 @@ export function BookPage() {
                     name="email"
                     type="email"
                     required
-                    maxLength={254}
+                    maxLength={INPUT_LIMITS.guestEmail}
                     value={guestEmail}
                     onChange={(event) => setGuestEmail(event.target.value)}
                     className="rounded-lg border border-slate-300 px-3 py-2 focus:border-slate-500 focus:outline-none"
