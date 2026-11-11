@@ -1,0 +1,15 @@
+# В образ собираем монорепозиторий из исходников, поэтому наружу не должны
+# попадать зависимости, сборки и артефакты тестов.
+.git
+.env
+.env.*
+!.env.example
+.DS_Store
+.vscode
+.idea
+**/node_modules
+**/dist
+**/coverage
+**/test-results
+**/playwright-report
+**/*.tsbuildinfo
