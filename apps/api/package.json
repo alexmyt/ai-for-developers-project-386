@@ -22,6 +22,7 @@
     "@types/express": "5.0.6",
     "@types/node": "26.6.6",
     "@types/supertest": "7.2.1",
+    "ajv": "^8.20.0",
     "supertest": "7.3.2",
     "typescript": "~6.0.3",
     "unplugin-swc": "2.0.0",
