@@ -73,6 +73,9 @@ export function MainPage() {
           </section>
         ))}
       </div>
+      <Link to="/admin" className="text-sm text-slate-500 underline hover:no-underline">
+        Экран владельца
+      </Link>
     </main>
   )
 }
