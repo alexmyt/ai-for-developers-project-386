@@ -2,17 +2,14 @@
 // по пересечению с бронями (спецификация §4, §5, §7, docs/spec/calendar.md).
 // Время приходит снаружи через Clock (ADR-0003), поэтому функции детерминированы.
 import { BOOKING_WINDOW_DAYS } from '../config/calendar'
-import { intervalsIntersect } from '../bookings/booking.domain'
+import { intervalsIntersect, type Interval } from '../bookings/booking.domain'
 import type { Availability, AvailabilityDay, AvailabilitySlot } from './availability'
 import { addDays, isoInstant, moscowDateString } from './moscow-time'
 import { buildDayGrid } from './slot-grid'
 
 /** Интервал занятости: бронь любого типа встречи (спецификация §5). */
-export interface BookingInterval {
+export interface BookingInterval extends Interval {
   meetingTypeId: string
-  /** Полуоткрытый интервал [start, end). */
-  start: Date
-  end: Date
 }
 
 /**
