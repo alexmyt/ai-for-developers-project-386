@@ -15,6 +15,14 @@ export default defineConfig({
   // памяти (ADR-0003): брони из одного сценария видны другим. Чтобы файлы
   // не гоняли параллельно один и тот же слот, всё выполняется по порядку.
   workers: 1,
+  // Частичные сценарии живут на сид-типе «Знакомство» и не ждут лишних
+  // типов на главной странице. Полный сценарий (full-scenario.spec.ts)
+  // создаёт свой тип встречи и меняет общее состояние сервера, поэтому
+  // выполняется после них через зависимость проектов.
+  projects: [
+    { name: 'flows', testIgnore: /full-scenario\.spec\.ts/ },
+    { name: 'full', testMatch: /full-scenario\.spec\.ts/, dependencies: ['flows'] },
+  ],
   use: {
     baseURL: `http://localhost:${WEB_PORT}`,
   },
