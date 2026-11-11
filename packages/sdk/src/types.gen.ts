@@ -5,6 +5,49 @@ export type ClientOptions = {
 }
 
 /**
+ * Доступность типа встречи на всё окно записи одним ответом (спецификация §7).
+ */
+export type Availability = {
+  meetingTypeId: string
+  /**
+   * Ровно 14 дней, начиная с сегодняшнего по Москве.
+   */
+  days: Array<AvailabilityDay>
+}
+
+/**
+ * Календарный день по Москве со слотами рабочего дня.
+ */
+export type AvailabilityDay = {
+  /**
+   * Дата по Москве в формате YYYY-MM-DD.
+   */
+  date: string
+  /**
+   * Слоты дня; прошедшие старты скрыты, пустой день — нормальное состояние.
+   */
+  slots: Array<AvailabilitySlot>
+}
+
+/**
+ * Слот в сетке дня: интервал-кандидат со статусом, ещё не бронь (спецификация §4).
+ */
+export type AvailabilitySlot = {
+  /**
+   * UTC-инстант старта слота в ISO 8601 с Z.
+   */
+  start: string
+  /**
+   * UTC-инстант окончания слота в ISO 8601 с Z.
+   */
+  end: string
+  /**
+   * `free` — пересечений с бронями нет, `taken` — есть пересечение (спецификация §5).
+   */
+  status: 'free' | 'taken'
+}
+
+/**
  * Тип встречи — шаблон, заданный владельцем: размер слота и подпись
  * на гостевой странице (спецификация §6, docs/spec/calendar.md).
  */
@@ -26,6 +69,65 @@ export type MeetingType = {
    */
   durationMinutes: number
 }
+
+/**
+ * 404: тип встречи с таким id не существует (спецификация §10).
+ */
+export type MeetingTypeNotFoundError = {
+  /**
+   * Машинночитаемый код ошибки.
+   */
+  code: 'meeting_type_not_found'
+  /**
+   * Сообщение для человека; тестами не проверяется (спецификация §8).
+   */
+  message: string
+}
+
+/**
+ * 400: неверная форма запроса или поля (спецификация §10).
+ */
+export type ValidationError = {
+  /**
+   * Машинночитаемый код ошибки.
+   */
+  code: 'validation_error'
+  /**
+   * Сообщение для человека; тестами не проверяется (спецификация §8).
+   */
+  message: string
+}
+
+export type GetAvailabilityData = {
+  body?: never
+  path?: never
+  query: {
+    meetingTypeId: string
+  }
+  url: '/api/availability'
+}
+
+export type GetAvailabilityErrors = {
+  /**
+   * 400: неверная форма запроса или поля (спецификация §10).
+   */
+  400: ValidationError
+  /**
+   * 404: тип встречи с таким id не существует (спецификация §10).
+   */
+  404: MeetingTypeNotFoundError
+}
+
+export type GetAvailabilityError = GetAvailabilityErrors[keyof GetAvailabilityErrors]
+
+export type GetAvailabilityResponses = {
+  /**
+   * The request has succeeded.
+   */
+  200: Availability
+}
+
+export type GetAvailabilityResponse = GetAvailabilityResponses[keyof GetAvailabilityResponses]
 
 export type HealthData = {
   body?: never

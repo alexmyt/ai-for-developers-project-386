@@ -40,3 +40,68 @@ model MeetingType {
 op listMeetingTypes(): {
   items: MeetingType[];
 };
+
+/** Слот в сетке дня: интервал-кандидат со статусом, ещё не бронь (спецификация §4). */
+model AvailabilitySlot {
+  /** UTC-инстант старта слота в ISO 8601 с Z. */
+  start: utcDateTime;
+
+  /** UTC-инстант окончания слота в ISO 8601 с Z. */
+  end: utcDateTime;
+
+  /** `free` — пересечений с бронями нет, `taken` — есть пересечение (спецификация §5). */
+  status: "free" | "taken";
+}
+
+/** Календарный день по Москве со слотами рабочего дня. */
+model AvailabilityDay {
+  /** Дата по Москве в формате YYYY-MM-DD. */
+  @pattern("^\\d{4}-\\d{2}-\\d{2}$")
+  date: string;
+
+  /** Слоты дня; прошедшие старты скрыты, пустой день — нормальное состояние. */
+  slots: AvailabilitySlot[];
+}
+
+/** Доступность типа встречи на всё окно записи одним ответом (спецификация §7). */
+model Availability {
+  meetingTypeId: string;
+
+  /** Ровно 14 дней, начиная с сегодняшнего по Москве. */
+  days: AvailabilityDay[];
+}
+
+/** 400: неверная форма запроса или поля (спецификация §10). */
+@error
+model ValidationError {
+  @statusCode statusCode: 400;
+
+  /** Машинночитаемый код ошибки. */
+  code: "validation_error";
+
+  /** Сообщение для человека; тестами не проверяется (спецификация §8). */
+  message: string;
+}
+
+/** 404: тип встречи с таким id не существует (спецификация §10). */
+@error
+model MeetingTypeNotFoundError {
+  @statusCode statusCode: 404;
+
+  /** Машинночитаемый код ошибки. */
+  code: "meeting_type_not_found";
+
+  /** Сообщение для человека; тестами не проверяется (спецификация §8). */
+  message: string;
+}
+
+/**
+ * Сетка на окно записи одним ответом: 14 дней с сегодняшнего по Москве,
+ * чтобы фронтенд не делал 14 запросов (спецификация §7).
+ */
+@route("/api/availability")
+@get
+op getAvailability(@query meetingTypeId: string):
+  | Availability
+  | ValidationError
+  | MeetingTypeNotFoundError;

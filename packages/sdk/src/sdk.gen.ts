@@ -3,6 +3,9 @@
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client'
 import { client } from './client.gen'
 import type {
+  GetAvailabilityData,
+  GetAvailabilityErrors,
+  GetAvailabilityResponses,
   HealthData,
   HealthResponses,
   ListMeetingTypesData,
@@ -26,6 +29,18 @@ export type Options<
    */
   meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta
 }
+
+/**
+ * Сетка на окно записи одним ответом: 14 дней с сегодняшнего по Москве,
+ * чтобы фронтенд не делал 14 запросов (спецификация §7).
+ */
+export const getAvailability = <ThrowOnError extends boolean = false>(
+  options: Options<GetAvailabilityData, ThrowOnError>,
+): RequestResult<GetAvailabilityResponses, GetAvailabilityErrors, ThrowOnError> =>
+  (options.client ?? client).get<GetAvailabilityResponses, GetAvailabilityErrors, ThrowOnError>({
+    url: '/api/availability',
+    ...options,
+  })
 
 /**
  * Проверка живости сервиса: используется Docker HEALTHCHECK и smoke-тестами.

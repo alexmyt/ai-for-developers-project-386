@@ -7,6 +7,55 @@
   },
   "tags": [],
   "paths": {
+    "/api/availability": {
+      "get": {
+        "operationId": "getAvailability",
+        "description": "Сетка на окно записи одним ответом: 14 дней с сегодняшнего по Москве,\nчтобы фронтенд не делал 14 запросов (спецификация §7).",
+        "parameters": [
+          {
+            "name": "meetingTypeId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Availability"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "400: неверная форма запроса или поля (спецификация §10).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "404: тип встречи с таким id не существует (спецификация §10).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingTypeNotFoundError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "operationId": "health",
@@ -70,6 +119,77 @@
   },
   "components": {
     "schemas": {
+      "Availability": {
+        "type": "object",
+        "required": [
+          "meetingTypeId",
+          "days"
+        ],
+        "properties": {
+          "meetingTypeId": {
+            "type": "string"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvailabilityDay"
+            },
+            "description": "Ровно 14 дней, начиная с сегодняшнего по Москве."
+          }
+        },
+        "description": "Доступность типа встречи на всё окно записи одним ответом (спецификация §7)."
+      },
+      "AvailabilityDay": {
+        "type": "object",
+        "required": [
+          "date",
+          "slots"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Дата по Москве в формате YYYY-MM-DD."
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvailabilitySlot"
+            },
+            "description": "Слоты дня; прошедшие старты скрыты, пустой день — нормальное состояние."
+          }
+        },
+        "description": "Календарный день по Москве со слотами рабочего дня."
+      },
+      "AvailabilitySlot": {
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "status"
+        ],
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC-инстант старта слота в ISO 8601 с Z."
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC-инстант окончания слота в ISO 8601 с Z."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "free",
+              "taken"
+            ],
+            "description": "`free` — пересечений с бронями нет, `taken` — есть пересечение (спецификация §5)."
+          }
+        },
+        "description": "Слот в сетке дня: интервал-кандидат со статусом, ещё не бронь (спецификация §4)."
+      },
       "MeetingType": {
         "type": "object",
         "required": [
@@ -99,6 +219,48 @@
           }
         },
         "description": "Тип встречи — шаблон, заданный владельцем: размер слота и подпись\nна гостевой странице (спецификация §6, docs/spec/calendar.md)."
+      },
+      "MeetingTypeNotFoundError": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "meeting_type_not_found"
+            ],
+            "description": "Машинночитаемый код ошибки."
+          },
+          "message": {
+            "type": "string",
+            "description": "Сообщение для человека; тестами не проверяется (спецификация §8)."
+          }
+        },
+        "description": "404: тип встречи с таким id не существует (спецификация §10)."
+      },
+      "ValidationError": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "validation_error"
+            ],
+            "description": "Машинночитаемый код ошибки."
+          },
+          "message": {
+            "type": "string",
+            "description": "Сообщение для человека; тестами не проверяется (спецификация §8)."
+          }
+        },
+        "description": "400: неверная форма запроса или поля (спецификация §10)."
       }
     }
   }
