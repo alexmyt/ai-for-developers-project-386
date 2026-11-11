@@ -70,6 +70,11 @@ export function moscowDateString(instant: Date): string {
   return dateFormatter.format(instant)
 }
 
+/** ISO 8601 с Z без миллисекунд: все моменты сервиса выровнены по минутам. */
+export function isoInstant(instant: Date): string {
+  return instant.toISOString().replace('.000Z', 'Z')
+}
+
 /** Части календарной даты YYYY-MM-DD; для другой строки кидает ошибку. */
 function parseDate(date: string): { year: number; month: number; day: number } {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
