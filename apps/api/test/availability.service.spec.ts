@@ -7,6 +7,7 @@ import { AppModule } from '../src/app.module'
 import { AvailabilityService } from '../src/availability/availability.service'
 import { BookingsService } from '../src/bookings/bookings.service'
 import { Clock } from '../src/clock/clock'
+import { MeetingTypesService } from '../src/meeting-types/meeting-types.service'
 import { at, required } from './asserts'
 
 // 12:15 по Москве 11 ноября: «сегодня» фиксировано подменой Clock (ADR-0003),
@@ -17,6 +18,7 @@ describe('AvailabilityService с подменённым Clock', () => {
   let app: INestApplication
   let availabilityService: AvailabilityService
   let bookingsService: BookingsService
+  let meetingTypesService: MeetingTypesService
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
@@ -28,6 +30,7 @@ describe('AvailabilityService с подменённым Clock', () => {
     await app.init()
     availabilityService = app.get(AvailabilityService)
     bookingsService = app.get(BookingsService)
+    meetingTypesService = app.get(MeetingTypesService)
   })
 
   afterAll(async () => {
@@ -42,13 +45,15 @@ describe('AvailabilityService с подменённым Clock', () => {
     expect(at(result.days, 13).date).toBe('2026-11-24')
   })
 
-  it('бронь из хранилища делает пересекающиеся слоты занятыми', () => {
+  it('бронь из хранилища делает пересекающиеся слоты занятыми', async () => {
     // Бронь 10:00–11:00 по Москве 12 ноября: заняты слоты 10:00 и 10:30.
-    bookingsService.add({
-      id: 'b-1',
-      meetingTypeId: 'intro',
-      start: new Date('2026-11-12T07:00:00Z'),
-      end: new Date('2026-11-12T08:00:00Z'),
+    // Бронь создаётся через публичный create — как настоящий запрос гостя.
+    meetingTypesService.create({ id: 'review', title: 'Обзор проекта', durationMinutes: 60 })
+    await bookingsService.create({
+      meetingTypeId: 'review',
+      start: '2026-11-12T07:00:00Z',
+      name: 'Анна',
+      email: 'anna@example.com',
     })
 
     const result = availabilityService.get('intro')
