@@ -209,6 +209,17 @@ export type SlotTakenResponse = {
 }
 
 /**
+ * Предстоящие брони владельца одним ответом (спецификация §9): все типы
+ * встреч в одном списке, без пагинации — окно записи ограничивает объём.
+ */
+export type UpcomingBookings = {
+  /**
+   * Брони со стартом не раньше текущего момента, по возрастанию start.
+   */
+  items: Array<Booking>
+}
+
+/**
  * Ошибка валидации: неверная форма запроса или поля (спецификация §10).
  */
 export type ValidationErrorResponse = {
@@ -249,6 +260,22 @@ export type GetAvailabilityResponses = {
 }
 
 export type GetAvailabilityResponse = GetAvailabilityResponses[keyof GetAvailabilityResponses]
+
+export type ListBookingsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/api/bookings'
+}
+
+export type ListBookingsResponses = {
+  /**
+   * The request has succeeded.
+   */
+  200: UpcomingBookings
+}
+
+export type ListBookingsResponse = ListBookingsResponses[keyof ListBookingsResponses]
 
 export type CreateBookingData = {
   body: CreateBookingRequest

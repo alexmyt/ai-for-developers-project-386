@@ -224,6 +224,24 @@ op createBooking(@body body: CreateBookingRequest):
   | SlotOutOfGridResponse
   | SlotTakenResponse;
 
+/**
+ * Предстоящие брони владельца одним ответом (спецификация §9): все типы
+ * встреч в одном списке, без пагинации — окно записи ограничивает объём.
+ */
+model UpcomingBookings {
+  /** Брони со стартом не раньше текущего момента, по возрастанию start. */
+  items: Booking[];
+}
+
+/**
+ * Список предстоящих броней владельца (спецификация §9): старт не раньше
+ * текущего момента, все типы встреч в одном списке, сортировка по start
+ * возрастанию, без пагинации.
+ */
+@route("/api/bookings")
+@get
+op listBookings(): UpcomingBookings;
+
 /** Ошибка валидации: неверная форма запроса или поля (спецификация §10). */
 model ValidationErrorResponse {
   @statusCode _: 400;

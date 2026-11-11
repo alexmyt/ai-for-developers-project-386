@@ -5,6 +5,7 @@ export {
   createMeetingType,
   getAvailability,
   health,
+  listBookings,
   listMeetingTypes,
   type Options,
 } from './sdk.gen'
@@ -34,6 +35,9 @@ export type {
   HealthData,
   HealthResponse,
   HealthResponses,
+  ListBookingsData,
+  ListBookingsResponse,
+  ListBookingsResponses,
   ListMeetingTypesData,
   ListMeetingTypesResponse,
   ListMeetingTypesResponses,
@@ -43,5 +47,6 @@ export type {
   SlotOutOfGridResponse,
   SlotOutOfWindowResponse,
   SlotTakenResponse,
+  UpcomingBookings,
   ValidationErrorResponse,
 } from './types.gen'

@@ -123,6 +123,23 @@
             }
           }
         }
+      },
+      "get": {
+        "operationId": "listBookings",
+        "description": "Список предстоящих броней владельца (спецификация §9): старт не раньше\nтекущего момента, все типы встреч в одном списке, сортировка по start\nвозрастанию, без пагинации.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpcomingBookings"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/health": {
@@ -557,6 +574,22 @@
           }
         },
         "description": "Слот пересекается с существующей бронью: 409 (спецификация §5, §8)."
+      },
+      "UpcomingBookings": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Booking"
+            },
+            "description": "Брони со стартом не раньше текущего момента, по возрастанию start."
+          }
+        },
+        "description": "Предстоящие брони владельца одним ответом (спецификация §9): все типы\nвстреч в одном списке, без пагинации — окно записи ограничивает объём."
       },
       "ValidationErrorResponse": {
         "type": "object",
