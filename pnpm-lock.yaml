@@ -245,6 +245,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@repo/sdk':
+        specifier: workspace:*
+        version: link:../../packages/sdk
       react:
         specifier: 19.3.1
         version: 19.3.1
