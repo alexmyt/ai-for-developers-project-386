@@ -29,6 +29,18 @@ export class BookingsService {
   }
 
   /**
+   * Предстоящие брони владельца (спецификация §9): старт не раньше текущего
+   * момента, все типы в одном списке, по возрастанию start, без пагинации.
+   */
+  listUpcoming(): BookingJson[] {
+    const now = this.clock.now()
+    return this.items
+      .filter((booking) => booking.start.getTime() >= now.getTime())
+      .sort((a, b) => a.start.getTime() - b.start.getTime())
+      .map(toBookingJson)
+  }
+
+  /**
    * Бронь свободного слота (спецификация §8). Проверки идут в фиксированном
    * порядке: форма и поля → существование типа → окно записи → сетка →
    * пересечения. Полуоткрытые интервалы делают касание границами допустимым.

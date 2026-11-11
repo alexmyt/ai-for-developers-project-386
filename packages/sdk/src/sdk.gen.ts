@@ -14,6 +14,8 @@ import type {
   GetAvailabilityResponses,
   HealthData,
   HealthResponses,
+  ListBookingsData,
+  ListBookingsResponses,
   ListMeetingTypesData,
   ListMeetingTypesResponses,
 } from './types.gen'
@@ -45,6 +47,19 @@ export const getAvailability = <ThrowOnError extends boolean = false>(
 ): RequestResult<GetAvailabilityResponses, GetAvailabilityErrors, ThrowOnError> =>
   (options.client ?? client).get<GetAvailabilityResponses, GetAvailabilityErrors, ThrowOnError>({
     url: '/api/availability',
+    ...options,
+  })
+
+/**
+ * Список предстоящих броней владельца (спецификация §9): старт не раньше
+ * текущего момента, все типы встреч в одном списке, сортировка по start
+ * возрастанию, без пагинации.
+ */
+export const listBookings = <ThrowOnError extends boolean = false>(
+  options?: Options<ListBookingsData, ThrowOnError>,
+): RequestResult<ListBookingsResponses, unknown, ThrowOnError> =>
+  (options?.client ?? client).get<ListBookingsResponses, unknown, ThrowOnError>({
+    url: '/api/bookings',
     ...options,
   })
 
