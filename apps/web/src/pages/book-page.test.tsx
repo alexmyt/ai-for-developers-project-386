@@ -2,11 +2,18 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { getAvailability, listMeetingTypes, type Availability } from '@repo/sdk'
+import {
+  createBooking,
+  getAvailability,
+  listMeetingTypes,
+  type Availability,
+  type Booking,
+} from '@repo/sdk'
 import { BookPage } from './book-page'
 
 // Сеть подменяется на уровне SDK, а не через моки fetch (спецификация §13.3).
 vi.mock('@repo/sdk', () => ({
+  createBooking: vi.fn(),
   getAvailability: vi.fn(),
   listMeetingTypes: vi.fn(),
 }))
@@ -59,6 +66,37 @@ function mockAvailability(availability: Availability): void {
     data: { items: [introType] },
     error: undefined,
   })
+}
+
+// Созданная бронь — форма ответа спецификации §8: id и end серверные.
+const bookingFixture: Booking = {
+  id: 'b-1',
+  meetingTypeId: 'intro',
+  meetingTypeTitle: 'Знакомство',
+  start: freeSlot.start,
+  end: freeSlot.end,
+  guestName: 'Анна',
+  guestEmail: 'anna@example.com',
+  createdAt: '2026-11-11T09:15:00Z',
+}
+
+/** Обещание под контролем теста: проверяет состояние isSubmitting. */
+function deferredBooking(): {
+  promise: Promise<{ data: Booking; error: undefined }>
+  resolve: (result: { data: Booking; error: undefined }) => void
+} {
+  type BookingResult = { data: Booking; error: undefined }
+  let resolve!: (result: BookingResult) => void
+  const promise = new Promise<BookingResult>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
+async function selectFreeSlot(user: ReturnType<typeof userEvent.setup>): Promise<void> {
+  // Первый день выбран по умолчанию, в нём один свободный слот; ждём
+  // загрузку календаря, прежде чем кликнуть. Имя кнопки — время и статус.
+  await user.click(await screen.findByRole('button', { name: /10:00–10:30/ }))
 }
 
 function renderBookPage(query = '?type=intro'): ReturnType<typeof render> {
@@ -147,5 +185,109 @@ describe('Страница записи', () => {
     await user.click(await screen.findByRole('link', { name: 'На главную' }))
     // Возврат проверяется в app.test.tsx через маршруты; здесь — наличие ссылки.
     expect(screen.getByRole('link', { name: 'На главную' }).getAttribute('href')).toBe('/')
+  })
+
+  it('выбор свободного слота открывает форму имени и email', async () => {
+    const user = userEvent.setup()
+    renderBookPage()
+    await selectFreeSlot(user)
+
+    // Форма показывает выбранный слот и поля гостя (спецификация §11).
+    expect(screen.getByText('Выбрано время: 10:00–10:30')).toBeVisible()
+    expect(screen.getByLabelText('Имя')).toBeVisible()
+    expect(screen.getByLabelText('Email')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Подтвердить запись' })).toBeVisible()
+  })
+
+  it('отправляет бронь с выбранным слотом и данными гостя', async () => {
+    const user = userEvent.setup()
+    vi.mocked(createBooking).mockResolvedValue({ data: bookingFixture, error: undefined })
+    renderBookPage()
+    await selectFreeSlot(user)
+
+    await user.type(screen.getByLabelText('Имя'), 'Анна')
+    await user.type(screen.getByLabelText('Email'), 'anna@example.com')
+    await user.click(screen.getByRole('button', { name: 'Подтвердить запись' }))
+
+    // В запросе — выбранный слот и тип встречи; end не передаётся (§8).
+    await screen.findByRole('status')
+    expect(vi.mocked(createBooking)).toHaveBeenCalledWith({
+      body: {
+        meetingTypeId: 'intro',
+        start: freeSlot.start,
+        name: 'Анна',
+        email: 'anna@example.com',
+      },
+    })
+  })
+
+  it('блокирует кнопку подтверждения, пока бронь отправляется', async () => {
+    const user = userEvent.setup()
+    const deferred = deferredBooking()
+    vi.mocked(createBooking).mockReturnValue(deferred.promise)
+    renderBookPage()
+    await selectFreeSlot(user)
+
+    await user.type(screen.getByLabelText('Имя'), 'Анна')
+    await user.type(screen.getByLabelText('Email'), 'anna@example.com')
+    await user.click(screen.getByRole('button', { name: 'Подтвердить запись' }))
+
+    // isSubmitting: повторный клик невозможен (спецификация §8).
+    expect(screen.getByRole('button', { name: 'Подтвердить запись' })).toBeDisabled()
+
+    deferred.resolve({ data: bookingFixture, error: undefined })
+    expect(await screen.findByRole('status')).toBeVisible()
+    expect(screen.queryByRole('button', { name: 'Подтвердить запись' })).not.toBeInTheDocument()
+  })
+
+  it('после успеха показывает «Бронь подтверждена. До встречи!» и слот становится занятым', async () => {
+    const user = userEvent.setup()
+    vi.mocked(createBooking).mockResolvedValue({ data: bookingFixture, error: undefined })
+    renderBookPage()
+    await selectFreeSlot(user)
+
+    await user.type(screen.getByLabelText('Имя'), 'Анна')
+    await user.type(screen.getByLabelText('Email'), 'anna@example.com')
+    await user.click(screen.getByRole('button', { name: 'Подтвердить запись' }))
+
+    expect(await screen.findByText('Бронь подтверждена. До встречи!')).toBeVisible()
+    // Локальное обновление: забронированный слот теперь занят (спецификация §11).
+    expect(screen.queryByText('Свободно')).not.toBeInTheDocument()
+    const bookedRow = screen.getByText('10:00–10:30').closest('li')
+    expect(bookedRow).not.toBeNull()
+    expect(within(bookedRow as HTMLElement).getByText('Занято')).toBeVisible()
+    // Число свободных слотов выбранного дня пересчитано.
+    expect(screen.getByText('Свободных слотов на этот день: 0')).toBeVisible()
+  })
+
+  it('ошибка slot_taken показывает сообщение сервера', async () => {
+    const user = userEvent.setup()
+    vi.mocked(createBooking).mockResolvedValue({
+      data: undefined,
+      error: { code: 'slot_taken', message: 'Это время только что заняли. Выберите другой слот' },
+    })
+    renderBookPage()
+    await selectFreeSlot(user)
+
+    await user.type(screen.getByLabelText('Имя'), 'Анна')
+    await user.type(screen.getByLabelText('Email'), 'anna@example.com')
+    await user.click(screen.getByRole('button', { name: 'Подтвердить запись' }))
+
+    // Сообщение предлагает выбрать другой слот (спецификация §11).
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Это время только что заняли. Выберите другой слот',
+    )
+  })
+
+  it('«Изменить» возвращает к выбору времени, не теряя выбранный слот', async () => {
+    const user = userEvent.setup()
+    renderBookPage()
+    await selectFreeSlot(user)
+
+    await user.click(screen.getByRole('button', { name: 'Изменить' }))
+
+    expect(screen.queryByLabelText('Имя')).not.toBeInTheDocument()
+    // Слот остаётся выбранным: его кнопка нажата (спецификация §11).
+    expect(screen.getByRole('button', { name: /10:00–10:30/, pressed: true })).toBeVisible()
   })
 })

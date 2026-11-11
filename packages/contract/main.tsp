@@ -127,6 +127,103 @@ op getAvailability(@query meetingTypeId: string):
   | ValidationErrorResponse
   | MeetingTypeNotFoundResponse;
 
+/** Бронь: занятый интервал с данными гостя (спецификация §8, docs/spec/calendar.md). */
+model Booking {
+  /** Id брони; генерирует сервер, гость и владелец его не задают. */
+  id: string;
+
+  /** Id типа встречи, длительность которого задаёт размер интервала. */
+  meetingTypeId: string;
+
+  /** Название типа встречи на момент брони. */
+  meetingTypeTitle: string;
+
+  /** UTC-инстант старта в ISO 8601 с Z. */
+  start: utcDateTime;
+
+  /** UTC-инстант окончания: start плюс длительность типа встречи. */
+  end: utcDateTime;
+
+  /** Имя гостя: 1–100 символов после trim. */
+  guestName: string;
+
+  /** Email гостя: без пробелов, с символом «@» и точкой в домене. */
+  guestEmail: string;
+
+  /** Момент создания брони в ISO 8601 с Z. */
+  createdAt: utcDateTime;
+}
+
+/**
+ * Данные бронирования (спецификация §8): end не принимается — длительность
+ * берётся из типа встречи, поэтому клиент не может подделать интервал.
+ */
+model CreateBookingRequest {
+  /** Идентификатор существующего типа встречи, например intro. */
+  meetingTypeId: string;
+
+  /** UTC-инстант старта в ISO 8601 с Z: старт из сетки внутри окна записи. */
+  start: utcDateTime;
+
+  /** Имя гостя: 1–100 символов после trim. */
+  @minLength(1)
+  @maxLength(100)
+  name: string;
+
+  /** Email гостя: до 254 символов, содержит «@» и точку в домене, без пробелов. */
+  @maxLength(254)
+  @pattern("^[^@\\s]+@[^@\\s]+\\.[^\\s@]+$")
+  email: string;
+}
+
+/** Успешное бронирование: 201 с созданной бронью (спецификация §8). */
+model CreatedBookingResponse {
+  @statusCode _: 201;
+  ...Booking;
+}
+
+/** Старт уже наступил или за пределами 14 дней: 400 (спецификация §8). */
+model SlotOutOfWindowResponse {
+  @statusCode _: 400;
+  code: "slot_out_of_window";
+
+  /** Человекочитаемое сообщение; тестами не проверяется (спецификация §8). */
+  message: string;
+}
+
+/** Старт не на сетке или встреча не успевает до 18:00: 400 (спецификация §8). */
+model SlotOutOfGridResponse {
+  @statusCode _: 400;
+  code: "slot_out_of_grid";
+
+  /** Человекочитаемое сообщение; тестами не проверяется (спецификация §8). */
+  message: string;
+}
+
+/** Слот пересекается с существующей бронью: 409 (спецификация §5, §8). */
+model SlotTakenResponse {
+  @statusCode _: 409;
+  code: "slot_taken";
+
+  /** Объясняет, что время только что заняли, и предлагает выбрать другой слот. */
+  message: string;
+}
+
+/**
+ * Бронирование свободного слота гостем (спецификация §8). Проверки идут
+ * в фиксированном порядке: форма и поля → тип встречи → окно записи →
+ * сетка → пересечения внутри мьютекса по дате.
+ */
+@route("/api/bookings")
+@post
+op createBooking(@body body: CreateBookingRequest):
+  | CreatedBookingResponse
+  | ValidationErrorResponse
+  | MeetingTypeNotFoundResponse
+  | SlotOutOfWindowResponse
+  | SlotOutOfGridResponse
+  | SlotTakenResponse;
+
 /** Ошибка валидации: неверная форма запроса или поля (спецификация §10). */
 model ValidationErrorResponse {
   @statusCode _: 400;

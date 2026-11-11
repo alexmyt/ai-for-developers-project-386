@@ -2,8 +2,9 @@
 // по пересечению с бронями (спецификация §4, §5, §7, docs/spec/calendar.md).
 // Время приходит снаружи через Clock (ADR-0003), поэтому функции детерминированы.
 import { BOOKING_WINDOW_DAYS } from '../config/calendar'
+import { intervalsIntersect } from '../bookings/booking.domain'
 import type { Availability, AvailabilityDay, AvailabilitySlot } from './availability'
-import { addDays, moscowDateString } from './moscow-time'
+import { addDays, isoInstant, moscowDateString } from './moscow-time'
 import { buildDayGrid } from './slot-grid'
 
 /** Интервал занятости: бронь любого типа встречи (спецификация §5). */
@@ -12,21 +13,6 @@ export interface BookingInterval {
   /** Полуоткрытый интервал [start, end). */
   start: Date
   end: Date
-}
-
-/** ISO 8601 с Z без миллисекунд: все моменты сервиса выровнены по минутам. */
-function toIsoInstant(instant: Date): string {
-  return instant.toISOString().replace('.000Z', 'Z')
-}
-
-/**
- * Пересечение полуоткрытых интервалов: slotStart < bookingEnd && bookingStart < slotEnd.
- * Касание границами конфликтом не считается (спецификация §5).
- */
-function intersects(slot: { start: Date; end: Date }, booking: BookingInterval): boolean {
-  return (
-    slot.start.getTime() < booking.end.getTime() && booking.start.getTime() < slot.end.getTime()
-  )
 }
 
 /**
@@ -49,9 +35,9 @@ export function buildAvailability(input: {
       // Старт, который уже наступил (start <= now), не возвращается вообще (§4).
       .filter((slot) => slot.start.getTime() > now.getTime())
       .map((slot) => ({
-        start: toIsoInstant(slot.start),
-        end: toIsoInstant(slot.end),
-        status: bookings.some((booking) => intersects(slot, booking)) ? 'taken' : 'free',
+        start: isoInstant(slot.start),
+        end: isoInstant(slot.end),
+        status: bookings.some((booking) => intervalsIntersect(slot, booking)) ? 'taken' : 'free',
       }))
     days.push({ date, slots })
   }

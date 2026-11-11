@@ -48,6 +48,67 @@ export type AvailabilitySlot = {
 }
 
 /**
+ * Бронь: занятый интервал с данными гостя (спецификация §8, docs/spec/calendar.md).
+ */
+export type Booking = {
+  /**
+   * Id брони; генерирует сервер, гость и владелец его не задают.
+   */
+  id: string
+  /**
+   * Id типа встречи, длительность которого задаёт размер интервала.
+   */
+  meetingTypeId: string
+  /**
+   * Название типа встречи на момент брони.
+   */
+  meetingTypeTitle: string
+  /**
+   * UTC-инстант старта в ISO 8601 с Z.
+   */
+  start: string
+  /**
+   * UTC-инстант окончания: start плюс длительность типа встречи.
+   */
+  end: string
+  /**
+   * Имя гостя: 1–100 символов после trim.
+   */
+  guestName: string
+  /**
+   * Email гостя: без пробелов, с символом «
+   */
+  guestEmail: string
+  /**
+   * Момент создания брони в ISO 8601 с Z.
+   */
+  createdAt: string
+}
+
+/**
+ * Данные бронирования (спецификация §8): end не принимается — длительность
+ * берётся из типа встречи, поэтому клиент не может подделать интервал.
+ */
+export type CreateBookingRequest = {
+  /**
+   * Идентификатор существующего типа встречи, например intro.
+   */
+  meetingTypeId: string
+  /**
+   * UTC-инстант старта в ISO 8601 с Z: старт из сетки внутри окна записи.
+   */
+  start: string
+  /**
+   * Имя гостя: 1–100 символов после trim.
+   */
+  name: string
+  /**
+   * Email гостя: до 254 символов, содержит «
+   */
+  email: string
+}
+
+/**
  * Данные для создания типа встречи: все поля задаёт владелец (спецификация §6.1).
  */
 export type CreateMeetingTypeRequest = {
@@ -115,6 +176,39 @@ export type MeetingTypeNotFoundResponse = {
 }
 
 /**
+ * Старт не на сетке или встреча не успевает до 18:00: 400 (спецификация §8).
+ */
+export type SlotOutOfGridResponse = {
+  code: 'slot_out_of_grid'
+  /**
+   * Человекочитаемое сообщение; тестами не проверяется (спецификация §8).
+   */
+  message: string
+}
+
+/**
+ * Старт уже наступил или за пределами 14 дней: 400 (спецификация §8).
+ */
+export type SlotOutOfWindowResponse = {
+  code: 'slot_out_of_window'
+  /**
+   * Человекочитаемое сообщение; тестами не проверяется (спецификация §8).
+   */
+  message: string
+}
+
+/**
+ * Слот пересекается с существующей бронью: 409 (спецификация §5, §8).
+ */
+export type SlotTakenResponse = {
+  code: 'slot_taken'
+  /**
+   * Объясняет, что время только что заняли, и предлагает выбрать другой слот.
+   */
+  message: string
+}
+
+/**
  * Ошибка валидации: неверная форма запроса или поля (спецификация §10).
  */
 export type ValidationErrorResponse = {
@@ -155,6 +249,39 @@ export type GetAvailabilityResponses = {
 }
 
 export type GetAvailabilityResponse = GetAvailabilityResponses[keyof GetAvailabilityResponses]
+
+export type CreateBookingData = {
+  body: CreateBookingRequest
+  path?: never
+  query?: never
+  url: '/api/bookings'
+}
+
+export type CreateBookingErrors = {
+  /**
+   * Ошибка валидации: неверная форма запроса или поля (спецификация §10).
+   */
+  400: ValidationErrorResponse | SlotOutOfWindowResponse | SlotOutOfGridResponse
+  /**
+   * Тип встречи с таким id не существует: 404 (спецификация §10).
+   */
+  404: MeetingTypeNotFoundResponse
+  /**
+   * Слот пересекается с существующей бронью: 409 (спецификация §5, §8).
+   */
+  409: SlotTakenResponse
+}
+
+export type CreateBookingError = CreateBookingErrors[keyof CreateBookingErrors]
+
+export type CreateBookingResponses = {
+  /**
+   * Успешное бронирование: 201 с созданной бронью (спецификация §8).
+   */
+  201: Booking
+}
+
+export type CreateBookingResponse = CreateBookingResponses[keyof CreateBookingResponses]
 
 export type HealthData = {
   body?: never
