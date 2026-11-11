@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
-import { getAvailability, listMeetingTypes } from '@repo/sdk'
-import type { Availability, AvailabilityDay, MeetingType } from '@repo/sdk'
+import { createBooking, getAvailability, listMeetingTypes } from '@repo/sdk'
+import type { Availability, AvailabilityDay, AvailabilitySlot, MeetingType } from '@repo/sdk'
 
-// Страница записи: календарь на 14 дней и слоты выбранного дня
-// через сгенерированный SDK (спецификация §7, §11; ADR-0002).
+// Страница записи: календарь на 14 дней, слоты выбранного дня и форма
+// брони через сгенерированный SDK (спецификация §7, §8, §11; ADR-0002).
 type LoadState = 'loading' | 'error' | 'success'
 
 // Время показываем по Москве — пояс владельца (спецификация §3).
@@ -45,6 +45,14 @@ export function BookPage() {
   const [meetingType, setMeetingType] = useState<MeetingType | null>(null)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
+  // Выбранный свободный слот и шаг экрана: выбор слота открывает форму
+  // имени и email (спецификация §11).
+  const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null)
+  const [formOpen, setFormOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [bookedSlot, setBookedSlot] = useState<AvailabilitySlot | null>(null)
+
   useEffect(() => {
     if (!meetingTypeId) {
       setLoadState('error')
@@ -81,6 +89,68 @@ export function BookPage() {
       cancelled = true
     }
   }, [meetingTypeId])
+
+  /** Выбор свободного слота открывает форму брони. */
+  function selectSlot(slot: AvailabilitySlot): void {
+    setSelectedSlot(slot)
+    setFormOpen(true)
+    setSubmitError(null)
+    setBookedSlot(null)
+  }
+
+  /** Забронированный слот становится занятым в календаре (спецификация §11). */
+  function markSlotTaken(startIso: string): void {
+    setAvailability((prev) =>
+      prev
+        ? {
+            ...prev,
+            days: prev.days.map((day) => ({
+              ...day,
+              slots: day.slots.map((slot) =>
+                slot.start === startIso ? { ...slot, status: 'taken' as const } : slot,
+              ),
+            })),
+          }
+        : prev,
+    )
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedSlot || !meetingTypeId) {
+      return
+    }
+
+    const formData = new FormData(event.currentTarget)
+    setIsSubmitting(true)
+    setSubmitError(null)
+
+    try {
+      const { data, error } = await createBooking({
+        body: {
+          meetingTypeId,
+          start: selectedSlot.start,
+          name: String(formData.get('name') ?? ''),
+          email: String(formData.get('email') ?? ''),
+        },
+      })
+
+      if (error) {
+        // slot_taken объясняет, что время только что заняли, и предлагает
+        // выбрать другой слот (спецификация §11).
+        setSubmitError(error.message)
+        return
+      }
+
+      markSlotTaken(data.start)
+      setBookedSlot(selectedSlot)
+      setFormOpen(false)
+    } catch {
+      setSubmitError('Не удалось отправить бронь. Попробуйте ещё раз.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   if (!meetingTypeId) {
     return (
@@ -153,25 +223,110 @@ export function BookPage() {
               <p className="text-slate-600">На этот день свободных слотов нет.</p>
             )}
             <ul className="flex flex-col gap-2">
-              {selectedDay?.slots.map((slot) => (
-                <li
-                  key={slot.start}
-                  className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-2.5"
-                >
-                  <span className="text-slate-900">{slotLabel(slot.start, slot.end)}</span>
-                  <span
-                    className={
-                      slot.status === 'free'
-                        ? 'font-medium text-emerald-700'
-                        : 'text-slate-400 line-through'
-                    }
+              {selectedDay?.slots.map((slot) =>
+                slot.status === 'free' ? (
+                  // Свободный слот выбирается кликом целиком: открывается
+                  // форма брони.
+                  <li key={slot.start}>
+                    <button
+                      type="button"
+                      aria-pressed={selectedSlot?.start === slot.start}
+                      onClick={() => selectSlot(slot)}
+                      className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-left transition hover:border-slate-400 aria-pressed:border-slate-900 aria-pressed:bg-slate-900"
+                    >
+                      <span className="text-slate-900 aria-pressed:text-white">
+                        {slotLabel(slot.start, slot.end)}
+                      </span>
+                      <span className="font-medium text-emerald-700 aria-pressed:text-white">
+                        {STATUS_LABELS[slot.status]}
+                      </span>
+                    </button>
+                  </li>
+                ) : (
+                  <li
+                    key={slot.start}
+                    className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-2.5"
                   >
-                    {STATUS_LABELS[slot.status]}
-                  </span>
-                </li>
-              ))}
+                    <span className="text-slate-900">{slotLabel(slot.start, slot.end)}</span>
+                    <span className="text-slate-400 line-through">
+                      {STATUS_LABELS[slot.status]}
+                    </span>
+                  </li>
+                ),
+              )}
             </ul>
           </section>
+
+          {/* Успех: слот занят, гостю показывают подтверждение (спецификация §11). */}
+          {bookedSlot && (
+            <p
+              role="status"
+              className="rounded-lg bg-emerald-50 p-4 text-sm font-medium text-emerald-800"
+            >
+              Бронь подтверждена. До встречи!
+            </p>
+          )}
+
+          {/* Форма брони: имя и email для выбранного слота (спецификация §8, §11). */}
+          {selectedSlot && formOpen && (
+            <section aria-label="Данные гостя">
+              <form
+                onSubmit={handleSubmit}
+                className="flex flex-col gap-4 rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+              >
+                <h2 className="text-lg font-semibold text-slate-900">
+                  Выбрано время: {slotLabel(selectedSlot.start, selectedSlot.end)}
+                </h2>
+                {submitError && (
+                  <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-700">
+                    {submitError}
+                  </p>
+                )}
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="guest-name" className="font-medium text-slate-900">
+                    Имя
+                  </label>
+                  <input
+                    id="guest-name"
+                    name="name"
+                    type="text"
+                    required
+                    maxLength={100}
+                    className="rounded-lg border border-slate-300 px-3 py-2 focus:border-slate-500 focus:outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1">
+                  <label htmlFor="guest-email" className="font-medium text-slate-900">
+                    Email
+                  </label>
+                  <input
+                    id="guest-email"
+                    name="email"
+                    type="email"
+                    required
+                    maxLength={254}
+                    className="rounded-lg border border-slate-300 px-3 py-2 focus:border-slate-500 focus:outline-none"
+                  />
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="rounded-lg bg-slate-900 px-4 py-2.5 font-medium text-white transition hover:bg-slate-700 disabled:opacity-50"
+                  >
+                    Подтвердить запись
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormOpen(false)}
+                    className="rounded-lg border border-slate-300 px-4 py-2.5 font-medium text-slate-700 transition hover:border-slate-400"
+                  >
+                    Изменить
+                  </button>
+                </div>
+              </form>
+            </section>
+          )}
         </>
       )}
 
