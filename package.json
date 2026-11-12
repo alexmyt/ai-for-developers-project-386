@@ -1,5 +1,6 @@
 {
   "name": "call-calendar",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.18.0",
@@ -9,7 +10,8 @@
   "scripts": {
     "dev": "pnpm --filter @repo/contract build && pnpm -r --parallel dev",
     "build": "pnpm -r build",
-    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm --filter @repo/contract check",
+    "generate": "pnpm --filter @repo/contract build && pnpm --filter @repo/sdk generate",
+    "check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm generate && git diff --exit-code -- packages/contract/openapi.json packages/sdk/src && pnpm --filter @repo/e2e e2e",
     "lint": "eslint .",
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
