@@ -11,15 +11,14 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 12.18.0
-
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22.23.4
-          cache: pnpm
+      # Инструменты из mise.toml (node, pnpm, hk): в CI та же команда,
+      # что и локально — mise run check (см. AGENTS.md).
+      - uses: jdx/mise-action@v5
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm check
+      # Браузер для Playwright: mise run check завершается браузерным e2e
+      # с настоящим сервером, сеть не мокается.
+      - run: pnpm --filter @repo/e2e exec playwright install --with-deps chromium
+
+      - run: mise run check
