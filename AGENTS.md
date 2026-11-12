@@ -5,14 +5,16 @@
 ## Команды
 
 ```bash
-mise run setup   # первый запуск: инструменты, зависимости, git-хуки
-pnpm dev         # API на :3000 и Vite на :5173
-pnpm check       # все проверки: формат, линтер, типы, тесты, сборка, контракт
-pnpm test        # только тесты (Vitest)
-pnpm lint        # только ESLint
+mise run setup     # первый запуск: инструменты, зависимости, git-хуки, браузер e2e
+mise run check     # все проверки: формат, линтер, типы, тесты, сборка, контракт, SDK, e2e
+mise run generate  # TypeSpec → openapi.json → SDK одной командой
+pnpm dev           # API на :3000 и Vite на :5173
+pnpm check         # то же, что mise run check
+pnpm test          # только тесты (Vitest)
+pnpm lint          # только ESLint
 ```
 
-Точечно: `pnpm format`, `pnpm format:check`, `pnpm typecheck`, `pnpm build`.
+Точечно: `pnpm format`, `pnpm format:check`, `pnpm typecheck`, `pnpm build`, `pnpm e2e` (браузерный сценарий отдельно), `pnpm e2e:container`.
 
 ## Устройство
 
@@ -24,6 +26,16 @@ pnpm lint        # только ESLint
 Монорепо на pnpm workspaces, контракт-first: сначала TypeSpec, потом API и SDK.
 Решения — в `docs/adr/`, правила календаря — в `docs/spec/`, термины — в `GLOSSARY.md`.
 
+### Генерируемые файлы
+
+Эти пути создаются командой `mise run generate` и руками не редактируются:
+
+- `packages/contract/openapi.json` — компилируется из `packages/contract/*.tsp`;
+- `packages/sdk/src/**` — генерируется `@hey-api/openapi-ts` из `openapi.json`.
+
+`pnpm check` перегенерирует оба артефакта и падает на `git diff`, если файл
+в репозитории устарел; то же делает CI (ADR-0002).
+
 ## Коммиты
 
 Сообщения следуют [Conventional Commits](https://www.conventionalcommits.org/): `type(scope): subject`.
@@ -31,7 +43,8 @@ pnpm lint        # только ESLint
 - **Типы**: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `ci`.
 - **Scope**: затронутая область — `(docs/agents)`, `(workflow)`; для изменений по всему репозиторию опускается.
 - **Subject**: повелительное наклонение, строчная буква, без точки; что изменилось, а не почему.
-- **Body**: почему, строки до 72 символов; футер `BREAKING CHANGE:` для несовместимых изменений и `!` после типа или scope.
+- **Body**: почему, строки до 72 символов; футер `Refs: #NN` — ссылка на тикет реализации (для новых коммитов; историю не переписываем).
+- **Footer**: `BREAKING CHANGE:` для несовместимых изменений и `!` после типа или scope.
 
 Формат проверяет хук `commit-msg`, который ставит `mise run setup`.
 

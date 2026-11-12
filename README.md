@@ -86,7 +86,8 @@ mise run setup
 
 ```bash
 pnpm dev          # API на :3000 и Vite на :5173, /api проксируется в API
-pnpm check        # все проверки: формат, линтер, типы, тесты, сборка, контракт
+mise run check    # все проверки: формат, линтер, типы, тесты, сборка, контракт, SDK, браузерный e2e
+mise run generate # TypeSpec → openapi.json → SDK одной командой
 pnpm test         # Vitest: контрактные и юнит-тесты
 pnpm lint         # ESLint
 pnpm typecheck    # tsc --noEmit во всех пакетах
