@@ -1,0 +1,14 @@
+{
+  "name": "@repo/e2e",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test",
+    "e2e:container": "playwright test --config playwright.container.config.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.65.0",
+    "typescript": "~6.0.3"
+  }
+}

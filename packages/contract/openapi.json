@@ -7,6 +7,141 @@
   },
   "tags": [],
   "paths": {
+    "/api/availability": {
+      "get": {
+        "operationId": "getAvailability",
+        "description": "Сетка на окно записи одним ответом: 14 дней с сегодняшнего по Москве,\nчтобы фронтенд не делал 14 запросов (спецификация §7).",
+        "parameters": [
+          {
+            "name": "meetingTypeId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "explode": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Availability"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка валидации: неверная форма запроса или поля (спецификация §10).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Тип встречи с таким id не существует: 404 (спецификация §10).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingTypeNotFoundResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/bookings": {
+      "post": {
+        "operationId": "createBooking",
+        "description": "Бронирование свободного слота гостем (спецификация §8). Проверки идут\nв фиксированном порядке: форма и поля → тип встречи → окно записи →\nсетка → пересечения внутри мьютекса по дате.",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Успешное бронирование: 201 с созданной бронью (спецификация §8).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка валидации: неверная форма запроса или поля (спецификация §10).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/ValidationErrorResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SlotOutOfWindowResponse"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SlotOutOfGridResponse"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Тип встречи с таким id не существует: 404 (спецификация §10).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingTypeNotFoundResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Слот пересекается с существующей бронью: 409 (спецификация §5, §8).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotTakenResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateBookingRequest"
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listBookings",
+        "description": "Список предстоящих броней владельца (спецификация §9): старт не раньше\nтекущего момента, все типы встреч в одном списке, сортировка по start\nвозрастанию, без пагинации.",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UpcomingBookings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/health": {
       "get": {
         "operationId": "health",
@@ -36,7 +171,446 @@
           }
         }
       }
+    },
+    "/api/meeting-types": {
+      "get": {
+        "operationId": "listMeetingTypes",
+        "description": "Список типов встреч в порядке создания, сид-тип идёт первым (спецификация §6.2).",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "The request has succeeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MeetingType"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createMeetingType",
+        "description": "Создание типа встречи: id задаёт владелец, сервер его не генерирует\n(спецификация §6.1). Проверки идут в порядке: форма и поля → уникальность id.",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Успешное создание: 201 с созданным типом (спецификация §6.1).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingType"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Ошибка валидации: неверная форма запроса или поля (спецификация §10).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Конфликт: тип встречи с таким id уже создан (спецификация §10).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeetingTypeExistsResponse"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateMeetingTypeRequest"
+              }
+            }
+          }
+        }
+      }
     }
   },
-  "components": {}
+  "components": {
+    "schemas": {
+      "Availability": {
+        "type": "object",
+        "required": [
+          "meetingTypeId",
+          "days"
+        ],
+        "properties": {
+          "meetingTypeId": {
+            "type": "string"
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvailabilityDay"
+            },
+            "description": "Ровно 14 дней, начиная с сегодняшнего по Москве."
+          }
+        },
+        "description": "Доступность типа встречи на всё окно записи одним ответом (спецификация §7)."
+      },
+      "AvailabilityDay": {
+        "type": "object",
+        "required": [
+          "date",
+          "slots"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "description": "Дата по Москве в формате YYYY-MM-DD."
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AvailabilitySlot"
+            },
+            "description": "Слоты дня; прошедшие старты скрыты, пустой день — нормальное состояние."
+          }
+        },
+        "description": "Календарный день по Москве со слотами рабочего дня."
+      },
+      "AvailabilitySlot": {
+        "type": "object",
+        "required": [
+          "start",
+          "end",
+          "status"
+        ],
+        "properties": {
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC-инстант старта слота в ISO 8601 с Z."
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC-инстант окончания слота в ISO 8601 с Z."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "free",
+              "taken"
+            ],
+            "description": "`free` — пересечений с бронями нет, `taken` — есть пересечение (спецификация §5)."
+          }
+        },
+        "description": "Слот в сетке дня: интервал-кандидат со статусом, ещё не бронь (спецификация §4)."
+      },
+      "Booking": {
+        "type": "object",
+        "required": [
+          "id",
+          "meetingTypeId",
+          "meetingTypeTitle",
+          "start",
+          "end",
+          "guestName",
+          "guestEmail",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Id брони; генерирует сервер, гость и владелец его не задают."
+          },
+          "meetingTypeId": {
+            "type": "string",
+            "description": "Id типа встречи, длительность которого задаёт размер интервала."
+          },
+          "meetingTypeTitle": {
+            "type": "string",
+            "description": "Название типа встречи на момент брони."
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC-инстант старта в ISO 8601 с Z."
+          },
+          "end": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC-инстант окончания: start плюс длительность типа встречи."
+          },
+          "guestName": {
+            "type": "string",
+            "description": "Имя гостя: 1–100 символов после trim."
+          },
+          "guestEmail": {
+            "type": "string",
+            "description": "Email гостя: без пробелов, с символом «"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Момент создания брони в ISO 8601 с Z."
+          }
+        },
+        "description": "Бронь: занятый интервал с данными гостя (спецификация §8, docs/spec/calendar.md)."
+      },
+      "CreateBookingRequest": {
+        "type": "object",
+        "required": [
+          "meetingTypeId",
+          "start",
+          "name",
+          "email"
+        ],
+        "properties": {
+          "meetingTypeId": {
+            "type": "string",
+            "description": "Идентификатор существующего типа встречи, например intro."
+          },
+          "start": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC-инстант старта в ISO 8601 с Z: старт из сетки внутри окна записи."
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Имя гостя: 1–100 символов после trim."
+          },
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "pattern": "^[^@\\s]+@[^@\\s]+\\.[^\\s@]+$",
+            "description": "Email гостя: до 254 символов, содержит «"
+          }
+        },
+        "description": "Данные бронирования (спецификация §8): end не принимается — длительность\nберётся из типа встречи, поэтому клиент не может подделать интервал."
+      },
+      "CreateMeetingTypeRequest": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "durationMinutes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50,
+            "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+            "description": "Внешний идентификатор: 1–50 символов, латиница в нижнем регистре и дефисы."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100,
+            "description": "Название на карточке для гостя: 1–100 символов."
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 500,
+            "description": "Описание для гостя: до 500 символов; если не передано или пустое — null."
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "minimum": 30,
+            "maximum": 240,
+            "multipleOf": 30,
+            "description": "Длительность в минутах: от 30 до 240, кратна 30."
+          }
+        },
+        "description": "Данные для создания типа встречи: все поля задаёт владелец (спецификация §6.1)."
+      },
+      "MeetingType": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "description",
+          "durationMinutes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Внешний идентификатор: задаёт владелец, уникален и не меняется."
+          },
+          "title": {
+            "type": "string",
+            "description": "Название на карточке для гостя."
+          },
+          "description": {
+            "type": "string",
+            "nullable": true,
+            "description": "Описание для гостя; если не задано или пустое — null."
+          },
+          "durationMinutes": {
+            "type": "integer",
+            "format": "int32",
+            "description": "Длительность в минутах: от 30 до 240, кратна 30."
+          }
+        },
+        "description": "Тип встречи — шаблон, заданный владельцем: размер слота и подпись\nна гостевой странице (спецификация §6, docs/spec/calendar.md)."
+      },
+      "MeetingTypeExistsResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "meeting_type_exists"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "Человекочитаемое описание конфликта."
+          }
+        },
+        "description": "Конфликт: тип встречи с таким id уже создан (спецификация §10)."
+      },
+      "MeetingTypeNotFoundResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "meeting_type_not_found"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "Человекочитаемое сообщение; тестами не проверяется (спецификация §8)."
+          }
+        },
+        "description": "Тип встречи с таким id не существует: 404 (спецификация §10)."
+      },
+      "SlotOutOfGridResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "slot_out_of_grid"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "Человекочитаемое сообщение; тестами не проверяется (спецификация §8)."
+          }
+        },
+        "description": "Старт не на сетке или встреча не успевает до 18:00: 400 (спецификация §8)."
+      },
+      "SlotOutOfWindowResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "slot_out_of_window"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "Человекочитаемое сообщение; тестами не проверяется (спецификация §8)."
+          }
+        },
+        "description": "Старт уже наступил или за пределами 14 дней: 400 (спецификация §8)."
+      },
+      "SlotTakenResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "slot_taken"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "Объясняет, что время только что заняли, и предлагает выбрать другой слот."
+          }
+        },
+        "description": "Слот пересекается с существующей бронью: 409 (спецификация §5, §8)."
+      },
+      "UpcomingBookings": {
+        "type": "object",
+        "required": [
+          "items"
+        ],
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Booking"
+            },
+            "description": "Брони со стартом не раньше текущего момента, по возрастанию start."
+          }
+        },
+        "description": "Предстоящие брони владельца одним ответом (спецификация §9): все типы\nвстреч в одном списке, без пагинации — окно записи ограничивает объём."
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "enum": [
+              "validation_error"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "description": "Человекочитаемое описание того, что не так с запросом."
+          }
+        },
+        "description": "Ошибка валидации: неверная форма запроса или поля (спецификация §10)."
+      }
+    }
+  }
 }
