@@ -4,6 +4,7 @@ import "package://github.com/jdx/hk/releases/download/v2.11.1/hk@2.11.1#/Builtin
 
 // Те же исключения, что в .prettierignore и eslint.config.js: вендоренные
 // скиллы агентов, документация и сгенерированный код не линтуются.
+// CHANGELOG.md ведёт release-please — руками не правится.
 exclude = List(
   ".agents/**",
   "docs/**",
@@ -12,6 +13,7 @@ exclude = List(
   "pnpm-lock.yaml",
   "packages/sdk/src/**",
   "packages/contract/openapi.json",
+  "CHANGELOG.md",
 )
 
 local linters = new Mapping {

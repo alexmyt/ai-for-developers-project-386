@@ -33,6 +33,9 @@ pnpm lint          # только ESLint
 - `packages/contract/openapi.json` — компилируется из `packages/contract/*.tsp`;
 - `packages/sdk/src/**` — генерируется `@hey-api/openapi-ts` из `openapi.json`.
 
+`CHANGELOG.md` ведёт release-please в release-PR — руками его тоже не правим,
+форматтеры его игнорируют.
+
 `pnpm check` перегенерирует оба артефакта и падает на `git diff`, если файл
 в репозитории устарел; то же делает CI (ADR-0002).
 
