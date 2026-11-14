@@ -1,0 +1,13 @@
+# Сервис на Render (https://render.com/docs/blueprint-spec): один
+# Docker-контейнер отдаёт и API, и SPA-статику (ADR-0002, ADR-0004).
+# Секретов здесь нет и быть не должно: приложению они не нужны.
+services:
+  - type: web
+    name: call-calendar
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    branch: main
+    autoDeploy: true
+    healthCheckPath: /api/health
