@@ -13,6 +13,14 @@ _.path = ["./node_modules/.bin"]
 # Браузер для Playwright нужен mise run check — браузерный e2e входит в общий прогон.
 run = ["mise install", "pnpm install", "hk install", "pnpm --filter @repo/e2e exec playwright install chromium"]
 
+[tasks.dev]
+# Запуск в dev-режиме: API на :3000 и Vite на :5173 (AGENTS.md).
+run = "pnpm dev"
+
+[tasks.build]
+# Production-сборка всех пакетов монорепо.
+run = "pnpm build"
+
 [tasks.check]
 # Единственная команда всех проверок: формат, линтер, типы, тесты, сборка,
 # генерация контракта и SDK, проверка свежести и браузерный e2e (AGENTS.md).

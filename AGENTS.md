@@ -6,9 +6,11 @@
 
 ```bash
 mise run setup     # первый запуск: инструменты, зависимости, git-хуки, браузер e2e
+mise run dev       # API на :3000 и Vite на :5173
+mise run build     # production-сборка всех пакетов
 mise run check     # все проверки: формат, линтер, типы, тесты, сборка, контракт, SDK, e2e
 mise run generate  # TypeSpec → openapi.json → SDK одной командой
-pnpm dev           # API на :3000 и Vite на :5173
+pnpm dev           # то же, что mise run dev
 pnpm check         # то же, что mise run check
 pnpm test          # только тесты (Vitest)
 pnpm lint          # только ESLint
