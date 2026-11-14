@@ -164,9 +164,9 @@ describe('Страница записи', () => {
     expect(within(days).getAllByRole('button')).toHaveLength(14)
     // Первый день выбран по умолчанию и содержит свои слоты со статусами.
     expect(within(days).getByRole('button', { pressed: true })).toBeVisible()
-    expect(screen.getByText('10:00–10:30')).toBeVisible()
+    expect(screen.getByText('10:00–10:30 МСК')).toBeVisible()
     expect(screen.getByText('Свободно')).toBeVisible()
-    expect(screen.getByText('11:00–11:30')).toBeVisible()
+    expect(screen.getByText('11:00–11:30 МСК')).toBeVisible()
     expect(screen.getByText('Занято')).toBeVisible()
   })
 
@@ -177,8 +177,8 @@ describe('Страница записи', () => {
     const days = await screen.findByRole('group', { name: 'Дни записи' })
     await user.click(within(days).getByRole('button', { name: /12 ноября/ }))
 
-    expect(screen.getByText('09:00–09:30')).toBeVisible()
-    expect(screen.queryByText('10:00–10:30')).not.toBeInTheDocument()
+    expect(screen.getByText('09:00–09:30 МСК')).toBeVisible()
+    expect(screen.queryByText('10:00–10:30 МСК')).not.toBeInTheDocument()
   })
 
   it('пустой день не ломает экран', async () => {
@@ -249,7 +249,7 @@ describe('Страница записи', () => {
 
     // В первом дне только занятый слот: выбрать нечего, кнопка неактивна —
     // так же она ведёт себя для типа без свободных слотов во всём окне (§11).
-    expect(await screen.findByText('11:00–11:30')).toBeVisible()
+    expect(await screen.findByText('11:00–11:30 МСК')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Продолжить' })).toBeDisabled()
   })
 
@@ -259,7 +259,7 @@ describe('Страница записи', () => {
     await selectFreeSlot(user)
 
     // Форма показывает выбранный слот и поля гостя (спецификация §11).
-    expect(screen.getByText('Выбрано время: 10:00–10:30')).toBeVisible()
+    expect(screen.getByText('Выбрано время: 10:00–10:30 МСК')).toBeVisible()
     expect(screen.getByLabelText('Имя')).toBeVisible()
     expect(screen.getByLabelText('Email')).toBeVisible()
     expect(screen.getByRole('button', { name: 'Подтвердить запись' })).toBeVisible()
@@ -319,7 +319,7 @@ describe('Страница записи', () => {
     expect(await screen.findByText('Бронь подтверждена. До встречи!')).toBeVisible()
     // Локальное обновление: забронированный слот теперь занят (спецификация §11).
     expect(screen.queryByText('Свободно')).not.toBeInTheDocument()
-    const bookedRow = screen.getByText('10:00–10:30').closest('li')
+    const bookedRow = screen.getByText('10:00–10:30 МСК').closest('li')
     expect(bookedRow).not.toBeNull()
     expect(within(bookedRow as HTMLElement).getByText('Занято')).toBeVisible()
     // Число свободных слотов выбранного дня пересчитано.
@@ -374,9 +374,9 @@ describe('Страница записи', () => {
     await user.click(screen.getByRole('button', { name: 'Подтвердить запись' }))
 
     await screen.findByText('Бронь подтверждена. До встречи!')
-    expect(screen.getByText('10:00–11:00').closest('li')).toHaveTextContent('Занято')
-    expect(screen.getByText('10:30–11:30').closest('li')).toHaveTextContent('Занято')
-    expect(screen.getByText('11:00–11:30').closest('li')).toHaveTextContent('Свободно')
+    expect(screen.getByText('10:00–11:00 МСК').closest('li')).toHaveTextContent('Занято')
+    expect(screen.getByText('10:30–11:30 МСК').closest('li')).toHaveTextContent('Занято')
+    expect(screen.getByText('11:00–11:30 МСК').closest('li')).toHaveTextContent('Свободно')
     // Обновление локальное: календарь не перечитывается и страница
     // не перезагружается.
     expect(vi.mocked(getAvailability)).toHaveBeenCalledTimes(1)
@@ -453,9 +453,9 @@ describe('Страница записи', () => {
     await waitFor(() => {
       expect(vi.mocked(getAvailability)).toHaveBeenCalledTimes(2)
     })
-    const conflictRow = screen.getByText('10:00–10:30').closest('li')
+    const conflictRow = screen.getByText('10:00–10:30 МСК').closest('li')
     expect(within(conflictRow as HTMLElement).getByText('Занято')).toBeVisible()
-    const neighbourRow = screen.getByText('09:00–09:30').closest('li')
+    const neighbourRow = screen.getByText('09:00–09:30 МСК').closest('li')
     expect(within(neighbourRow as HTMLElement).getByText('Занято')).toBeVisible()
     expect(screen.getByText('Свободных слотов на этот день: 0')).toBeVisible()
   })
@@ -478,7 +478,7 @@ describe('Страница записи', () => {
     // Сообщение о конфликте видно, форма закрыта — гость у выбора слота.
     await screen.findByText('Это время только что заняли. Выберите другой слот')
     expect(screen.queryByLabelText('Имя')).not.toBeInTheDocument()
-    expect(screen.getByText('10:00–10:30').closest('li')).toHaveTextContent('Занято')
+    expect(screen.getByText('10:00–10:30 МСК').closest('li')).toHaveTextContent('Занято')
 
     // Выбор другого слота и «Продолжить» открывают форму с сохранёнными
     // данными (спецификация §11).

@@ -9,7 +9,8 @@
 export const TIME_ZONE = 'Europe/Moscow'
 
 // Подписи времени строятся вручную через locale-форматтеры: ru-RU даёт
-// «10:00» и «11 ноября», разделитель интервала — тире.
+// «10:00» и «11 ноября», разделитель интервала — тире. В конце подписи
+// слота — метка « МСК»: гость видит, в каком поясе записывается (§3).
 
 const timeFormatter = new Intl.DateTimeFormat('ru-RU', {
   timeZone: TIME_ZONE,
@@ -30,9 +31,9 @@ const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
   month: 'long',
 })
 
-/** Подпись слота «10:00–10:30» по Москве (спецификация §3). */
+/** Подпись слота «10:00–10:30 МСК» — время всегда московское (§3). */
 export function slotLabel(startIso: string, endIso: string): string {
-  return `${timeFormatter.format(new Date(startIso))}–${timeFormatter.format(new Date(endIso))}`
+  return `${timeFormatter.format(new Date(startIso))}–${timeFormatter.format(new Date(endIso))} МСК`
 }
 
 /** Подпись дня календаря «ср, 11 ноября» по московской дате `YYYY-MM-DD`. */

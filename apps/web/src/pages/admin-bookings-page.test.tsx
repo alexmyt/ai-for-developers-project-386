@@ -67,7 +67,7 @@ describe('Раздел «Предстоящие события»', () => {
     expect(await screen.findByText('Анна')).toBeVisible()
     expect(screen.getByText('anna@example.com')).toBeVisible()
     expect(screen.getByText('Знакомство')).toBeVisible()
-    expect(screen.getByText('12 ноября, 10:00–10:30')).toBeVisible()
+    expect(screen.getByText('12 ноября, 10:00–10:30 МСК')).toBeVisible()
     expect(screen.getByText('Запись создана 10 ноября')).toBeVisible()
   })
 
@@ -82,7 +82,7 @@ describe('Раздел «Предстоящие события»', () => {
     expect(annaRow).toHaveTextContent('Знакомство')
     const borisRow = screen.getByRole('listitem', { name: /Борис/ })
     expect(borisRow).toHaveTextContent('Обзор проекта')
-    expect(within(borisRow).getByText('13 ноября, 09:00–10:00')).toBeVisible()
+    expect(within(borisRow).getByText('13 ноября, 09:00–10:00 МСК')).toBeVisible()
 
     // Анна идёт раньше Бориса, как в ответе API.
     expect(
