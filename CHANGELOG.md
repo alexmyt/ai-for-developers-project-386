@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/alexmyt/ai-for-developers-project-386/compare/v0.2.0...v0.3.0) (2026-11-14)
+
+
+### Features
+
+* **deploy:** add render blueprint ([03ebe69](https://github.com/alexmyt/ai-for-developers-project-386/commit/03ebe69288a6f396f8afcb10d9f962c7e4cc6fd4))
+
+
+### Bug Fixes
+
+* **deploy:** authenticate render mcp with an api key ([b37c09d](https://github.com/alexmyt/ai-for-developers-project-386/commit/b37c09dd2a3558fc2909b8f915e4d23588993d1a))
+* **deploy:** bridge render mcp through mcp-remote ([6a36556](https://github.com/alexmyt/ai-for-developers-project-386/commit/6a36556a158664585a88bbbd4ca1e12eb0d4320a))
+* **docker:** honor PORT in healthcheck and container e2e ([a4e38e2](https://github.com/alexmyt/ai-for-developers-project-386/commit/a4e38e2f894072de14e7b60150568b0ded925dd8))
+
 ## [0.2.0](https://github.com/alexmyt/ai-for-developers-project-386/compare/v0.1.0...v0.2.0) (2026-11-12)
 
 
