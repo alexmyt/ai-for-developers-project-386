@@ -41,6 +41,11 @@ export function dayLabel(date: string): string {
   return dayFormatter.format(new Date(`${date}T00:00:00Z`))
 }
 
+/** Подпись дня «11 ноября» по московской дате `YYYY-MM-DD` — заголовок слотов (§7). */
+export function dateHeadingLabel(date: string): string {
+  return dateFormatter.format(new Date(`${date}T00:00:00Z`))
+}
+
 /** Подпись даты «11 ноября» по UTC-инстанту — для списка владельца (§9). */
 export function dateLabel(isoInstant: string): string {
   return dateFormatter.format(new Date(isoInstant))

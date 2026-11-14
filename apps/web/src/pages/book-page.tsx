@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { createBooking, getAvailability, listMeetingTypes } from '@repo/sdk'
 import type { Availability, AvailabilityDay, AvailabilitySlot, MeetingType } from '@repo/sdk'
-import { INPUT_LIMITS, dayLabel, slotLabel } from '../lib/calendar-ui'
+import { INPUT_LIMITS, dayLabel, dateHeadingLabel, slotLabel } from '../lib/calendar-ui'
 
 // Страница записи: календарь на 14 дней и двухшаговый выбор — свободный
 // слот, затем по «Продолжить» форма имени и email (спецификация §7, §8, §11).
@@ -251,7 +251,7 @@ export function BookPage() {
           {/* Слоты выбранного дня: пустой день — нормальное состояние (§4). */}
           <section aria-label="Слоты дня">
             <h2 className="mb-2 text-sm font-medium text-slate-500">
-              {selectedDay ? `Слоты на ${selectedDate}` : 'Слоты'}
+              {selectedDay ? `Слоты на ${dateHeadingLabel(selectedDay.date)}` : 'Слоты'}
             </h2>
             {selectedDay && selectedDay.slots.length === 0 && (
               <p className="text-slate-600">На этот день свободных слотов нет.</p>

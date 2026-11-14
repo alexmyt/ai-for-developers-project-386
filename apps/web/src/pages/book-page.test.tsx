@@ -164,6 +164,8 @@ describe('Страница записи', () => {
     expect(within(days).getAllByRole('button')).toHaveLength(14)
     // Первый день выбран по умолчанию и содержит свои слоты со статусами.
     expect(within(days).getByRole('button', { pressed: true })).toBeVisible()
+    // Заголовок дня по-русски, как даты в календаре, а не сырой YYYY-MM-DD.
+    expect(screen.getByRole('heading', { name: 'Слоты на 11 ноября' })).toBeVisible()
     expect(screen.getByText('10:00–10:30 МСК')).toBeVisible()
     expect(screen.getByText('Свободно')).toBeVisible()
     expect(screen.getByText('11:00–11:30 МСК')).toBeVisible()
