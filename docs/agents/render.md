@@ -15,18 +15,24 @@ Two working options:
 
 ### OpenCode (the agent of this project)
 
-`opencode.json` already defines the remote server and reads the key from the environment:
+`opencode.json` already wires the server through the [`mcp-remote`](https://github.com/geelen/mcp-remote) bridge — the same pattern Render documents for Claude Desktop:
 
 ```jsonc
 {
   "mcp": {
     "servers": {
       "render": {
-        "type": "remote",
-        "url": "https://mcp.render.com/mcp",
-        "oauth": false,
-        "headers": {
-          "Authorization": "Bearer {env:RENDER_API_KEY}"
+        "type": "local",
+        "command": [
+          "npx",
+          "-y",
+          "mcp-remote",
+          "https://mcp.render.com/mcp",
+          "--header",
+          "Authorization: Bearer ${RENDER_API_KEY}"
+        ],
+        "environment": {
+          "RENDER_API_KEY": "{env:RENDER_API_KEY}"
         }
       }
     }
@@ -34,9 +40,17 @@ Two working options:
 }
 ```
 
+Why the bridge instead of a native remote entry (verified on OpenCode v2.2.5):
+
+- Render's OAuth server accepts only clients pre-registered in official plugins, so OpenCode cannot start an OAuth flow (see [Authentication model](#authentication-model)).
+- OpenCode resolves `{env:…}` in remote-server headers to an empty string, and spawns local MCP servers with a sanitized environment that strips credential-looking variables — a native remote entry sends `Authorization: Bearer ` with an empty key and every tool call fails with `unauthorized`.
+- The bridge moves both problems to well-defined ground: the `environment` field passes the key to the child process (`{env:…}` works there), and `mcp-remote` expands `${RENDER_API_KEY}` from its own environment into the header — its log confirms `Replacing ${RENDER_API_KEY} with environment value`.
+
+Setup:
+
 1. Create an API key: [Account Settings → API Keys](https://dashboard.render.com/u/settings?add-api-key).
-2. Export it in the shell that launches OpenCode (shell profile or a one-off `export RENDER_API_KEY="rnd_…"`).
-3. Start (or restart) OpenCode from that shell so the process sees the variable, then verify:
+2. Export it in the shell that launches OpenCode (`export RENDER_API_KEY="rnd_…"`, or keep it in `~/.zshrc`).
+3. Start OpenCode from that shell, then verify:
 
 ```sh
 opencode mcp list # should show ✓ render connected
