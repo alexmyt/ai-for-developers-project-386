@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.4.0](https://github.com/alexmyt/ai-for-developers-project-386/compare/v0.3.0...v0.4.0) (2026-11-14)
+
+
+### Features
+
+* **web:** format day heading in russian ([f1acf8f](https://github.com/alexmyt/ai-for-developers-project-386/commit/f1acf8f3f75a1efabb76fc55cc26b5d59dfcb91c))
+* **web:** show msk timezone on time labels ([f91b2cc](https://github.com/alexmyt/ai-for-developers-project-386/commit/f91b2ccab874801fdf0e339d3737c62f4b55e815))
+
+
+### Bug Fixes
+
+* **web:** mark overlapping slots taken after booking ([ff34fb8](https://github.com/alexmyt/ai-for-developers-project-386/commit/ff34fb8229e766157a49fcd0bee1449594adc8a4))
+
 ## [0.3.0](https://github.com/alexmyt/ai-for-developers-project-386/compare/v0.2.0...v0.3.0) (2026-11-14)
 
 
