@@ -84,17 +84,28 @@ export function BookPage() {
     setFormOpen(true)
   }
 
-  /** Забронированный слот становится занятым в календаре (спецификация §11). */
-  function markSlotTaken(startIso: string): void {
+  /**
+   * Забронированный интервал делает занятыми все пересекающие его слоты,
+   * а не только слот с точным совпадением старта: у типа на 60 минут занят
+   * и соседний старт через 30 минут (§6 — занятый слот не предлагается
+   * свободным). Интервалы полуоткрытые [start, end): касание границами
+   * не пересечение — та же логика, что на сервере (booking.domain.ts).
+   */
+  function markSlotTaken(startIso: string, endIso: string): void {
+    const bookedStart = new Date(startIso).getTime()
+    const bookedEnd = new Date(endIso).getTime()
     setAvailability((prev) =>
       prev
         ? {
             ...prev,
             days: prev.days.map((day) => ({
               ...day,
-              slots: day.slots.map((slot) =>
-                slot.start === startIso ? { ...slot, status: 'taken' as const } : slot,
-              ),
+              slots: day.slots.map((slot) => {
+                const intersects =
+                  bookedStart < new Date(slot.end).getTime() &&
+                  new Date(slot.start).getTime() < bookedEnd
+                return intersects ? { ...slot, status: 'taken' as const } : slot
+              }),
             })),
           }
         : prev,
@@ -147,7 +158,7 @@ export function BookPage() {
           setSubmitError(error.message)
           setFormOpen(false)
           setSelectedSlot(null)
-          markSlotTaken(selectedSlot.start)
+          markSlotTaken(selectedSlot.start, selectedSlot.end)
           void refreshAvailability()
           return
         }
@@ -155,7 +166,7 @@ export function BookPage() {
         return
       }
 
-      markSlotTaken(data.start)
+      markSlotTaken(data.start, data.end)
       setBookedSlot(selectedSlot)
       setFormOpen(false)
       // Слот занят: до нового выбора «Продолжить» неактивна (§11).

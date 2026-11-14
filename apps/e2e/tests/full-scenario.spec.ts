@@ -10,6 +10,30 @@ import { expect, test, type Page } from '@playwright/test'
 // в 409 meeting_type_exists от прошлого.
 const meetingTypeId = `consult-${Date.now()}`
 
+/** Пара «HH:MM–HH:MM» из подписи слота (рядом может быть метка « МСК»). */
+function slotTimes(label: string): [string, string] {
+  const match = label.match(/(\d{2}:\d{2})–(\d{2}:\d{2})/)
+  if (!match) {
+    throw new Error(`Не удалось разобрать подпись слота: ${label}`)
+  }
+  return [match[1] ?? '', match[2] ?? '']
+}
+
+function timeToMinutes(label: string): number {
+  const [hours = 0, minutes = 0] = label.split(':').map((part) => Number.parseInt(part, 10))
+  return hours * 60 + minutes
+}
+
+/** Пересечение полуоткрытых интервалов [start, end): касание — не конфликт (§8). */
+function intervalsIntersect(first: string, second: string): boolean {
+  const [firstStart, firstEnd] = slotTimes(first)
+  const [secondStart, secondEnd] = slotTimes(second)
+  return (
+    timeToMinutes(firstStart) < timeToMinutes(secondEnd) &&
+    timeToMinutes(secondStart) < timeToMinutes(firstEnd)
+  )
+}
+
 /**
  * Открывает страницу записи нового типа и выбирает первый свободный слот
  * первого дня, где он есть (прошедшие старты скрыты, §4). Возвращает метку
@@ -61,11 +85,27 @@ test('владелец создаёт тип, гость бронирует сл
   const rivalSlotLabel = await chooseFirstFreeSlot(rivalPage)
   expect(rivalSlotLabel).toBe(bookedSlotLabel)
 
+  // Свободные слоты дня гостя до брони: пересекающиеся с выбранной должны
+  // стать занятыми сразу после подтверждения (§6).
+  const freeLabelsBefore = await guestPage.getByRole('button', { name: /Свободно/ }).allInnerTexts()
+
   // Первый гость подтверждает бронь.
   await guestPage.getByLabel('Имя').fill('Вера')
   await guestPage.getByLabel('Email').fill('vera@example.com')
   await guestPage.getByRole('button', { name: 'Подтвердить запись' }).click()
   await expect(guestPage.getByText('Бронь подтверждена. До встречи!')).toBeVisible()
+
+  // Фикс §6: занятый слот не предлагается свободным — без перезагрузки
+  // страницы заняты и все пересекающиеся слоты (тип на 60 минут даёт
+  // соседний старт через 30 минут).
+  for (const rawLabel of freeLabelsBefore) {
+    if (!intervalsIntersect(bookedSlotLabel, rawLabel)) {
+      continue
+    }
+    const [slotStart, slotEnd] = slotTimes(rawLabel)
+    const row = guestPage.getByRole('listitem').filter({ hasText: `${slotStart}–${slotEnd}` })
+    await expect(row).toContainText('Занято')
+  }
 
   // Второй гость отправляет форму с устаревшим календарём — конфликт.
   await rivalPage.getByLabel('Имя').fill('Глеб')

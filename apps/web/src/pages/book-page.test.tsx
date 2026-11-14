@@ -328,6 +328,60 @@ describe('Страница записи', () => {
     expect(screen.getByRole('button', { name: 'Продолжить' })).toBeDisabled()
   })
 
+  it('после брони пересекающиеся слоты становятся занятыми без перечитывания', async () => {
+    const user = userEvent.setup()
+    // Тип на 60 минут: сетка даёт пересекающиеся слоты 10:00–11:00 и
+    // 10:30–11:30 — после брони занят и соседний (§6: занятый слот
+    // не предлагается свободным).
+    const hourSlot = {
+      start: '2026-11-11T07:00:00Z',
+      end: '2026-11-11T08:00:00Z',
+      status: 'free',
+    } as const
+    const overlapSlot = {
+      start: '2026-11-11T07:30:00Z',
+      end: '2026-11-11T08:30:00Z',
+      status: 'free',
+    } as const
+    // Касание границами — не пересечение (§8): 11:00–11:30 остаётся свободным.
+    const touchingSlot = {
+      start: '2026-11-11T08:00:00Z',
+      end: '2026-11-11T08:30:00Z',
+      status: 'free',
+    } as const
+    vi.mocked(getAvailability)
+      .mockReset()
+      .mockResolvedValue({
+        data: availabilityWithFirstDay([hourSlot, overlapSlot, touchingSlot]),
+        error: undefined,
+      })
+    vi.mocked(listMeetingTypes)
+      .mockReset()
+      .mockResolvedValue({
+        data: { items: [{ ...introType, durationMinutes: 60 }] },
+        error: undefined,
+      })
+    vi.mocked(createBooking).mockResolvedValue({
+      data: { ...bookingFixture, start: hourSlot.start, end: hourSlot.end },
+      error: undefined,
+    })
+    renderBookPage()
+
+    await user.click(await screen.findByRole('button', { name: /10:00–11:00/ }))
+    await user.click(screen.getByRole('button', { name: 'Продолжить' }))
+    await user.type(screen.getByLabelText('Имя'), 'Анна')
+    await user.type(screen.getByLabelText('Email'), 'anna@example.com')
+    await user.click(screen.getByRole('button', { name: 'Подтвердить запись' }))
+
+    await screen.findByText('Бронь подтверждена. До встречи!')
+    expect(screen.getByText('10:00–11:00').closest('li')).toHaveTextContent('Занято')
+    expect(screen.getByText('10:30–11:30').closest('li')).toHaveTextContent('Занято')
+    expect(screen.getByText('11:00–11:30').closest('li')).toHaveTextContent('Свободно')
+    // Обновление локальное: календарь не перечитывается и страница
+    // не перезагружается.
+    expect(vi.mocked(getAvailability)).toHaveBeenCalledTimes(1)
+  })
+
   it('ошибка slot_taken показывает сообщение сервера', async () => {
     const user = userEvent.setup()
     vi.mocked(createBooking).mockResolvedValue({
