@@ -1,12 +1,16 @@
 import { defineConfig } from '@playwright/test'
 
 // Браузерные сценарии билета #26 против одного контейнера (ADR-0002):
-// собранный образ отдаёт и API под /api, и SPA-статику на порту 3000.
+// собранный образ отдаёт и API под /api, и SPA-статику. Внутри контейнера
+// приложение слушает порт из переменной окружения PORT — в e2e передаём
+// заведомо не дефолтный, чтобы проверялся именно контракт с PORT, а не
+// захардкоженный порт.
 // Playwright сам запускает контейнер, ждёт /api/health и гоняет все
 // сценарии по порядку — сеть не мокается.
 //
 // Запуск из корня репозитория: `pnpm e2e:container` (сначала соберёт образ).
-const CONTAINER_PORT = 3000
+const HOST_PORT = 3000
+const APP_PORT = 4000
 const CONTAINER_NAME = 'call-calendar-e2e'
 const IMAGE_TAG = 'call-calendar:latest'
 
@@ -25,7 +29,7 @@ export default defineConfig({
     { name: 'full', testMatch: /full-scenario\.spec\.ts/, dependencies: ['flows'] },
   ],
   use: {
-    baseURL: `http://localhost:${CONTAINER_PORT}`,
+    baseURL: `http://localhost:${HOST_PORT}`,
   },
   webServer: [
     {
@@ -34,8 +38,8 @@ export default defineConfig({
       // прогонов исказили бы сценарии. Перед запуском снимаем контейнер
       // прошлого прогона, если тот остался висеть: Playwright убивает
       // клиент docker run, а не сам контейнер.
-      command: `docker rm --force ${CONTAINER_NAME} >/dev/null 2>&1; docker run --rm --name ${CONTAINER_NAME} -p ${CONTAINER_PORT}:3000 ${IMAGE_TAG}`,
-      url: `http://localhost:${CONTAINER_PORT}/api/health`,
+      command: `docker rm --force ${CONTAINER_NAME} >/dev/null 2>&1; docker run --rm --name ${CONTAINER_NAME} -e PORT=${APP_PORT} -p ${HOST_PORT}:${APP_PORT} ${IMAGE_TAG}`,
+      url: `http://localhost:${HOST_PORT}/api/health`,
       reuseExistingServer: false,
     },
   ],
